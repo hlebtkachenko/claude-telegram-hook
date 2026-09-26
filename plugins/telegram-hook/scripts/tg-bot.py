@@ -540,9 +540,9 @@ def send(markdown, buttons, image=None):
         return api("sendMessage", {**base, "text": markdown})["message_id"]
 
 
-def poller_running():
+def poller_running(lock="poller.lock"):
     try:
-        fd = os.open(state("poller.lock"), os.O_RDWR | os.O_CREAT, 0o600)
+        fd = os.open(state(lock), os.O_RDWR | os.O_CREAT, 0o600)
     except OSError:
         return False
     try:

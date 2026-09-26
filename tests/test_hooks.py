@@ -494,6 +494,37 @@ leaks = [f for f in glob.glob(os.path.join(STATE, "**", "*"), recursive=True)
          if os.path.isfile(f) and "fake-token" in (f + open(f, "rb").read().decode("utf-8", "replace"))]
 check("token in no state file", not leaks, leaks)
 
+# pairing: no chat ID -> SessionStart note + one pairing poller that tells a private sender their own chat ID
+try:
+    os.kill(int(open(lockfile).read().strip() or 0), signal.SIGTERM)  # no second getUpdates reader
+except (OSError, ValueError):
+    pass
+n = len(calls)
+PAIR_ENV = {"TELEGRAM_CHAT_ID": "", "TG_PAIR_SECONDS": "6"}
+outs = [finish(start("tg-pair.py", {"hook_event_name": "SessionStart", "source": "startup"}, PAIR_ENV), 5)[1]
+        for _ in range(2)]
+pair_out = json.loads(outs[0] or "{}")
+check("pairing: systemMessage + additionalContext", "chat ID" in pair_out.get("systemMessage", "") and
+      pair_out.get("hookSpecificOutput", {}).get("hookEventName") == "SessionStart" and
+      "private" in pair_out["hookSpecificOutput"].get("additionalContext", ""), outs[0])
+time.sleep(1)
+procs = subprocess.run(["pgrep", "-f", "tg-pair.py --pair"], capture_output=True, text=True).stdout.split()
+check("pairing: one poller", len(procs) == 1, procs)
+push({"message": {"message_id": 1, "from": {"id": -100}, "chat": {"id": -100, "type": "group"}, "text": "hi"}})
+push({"message": {"message_id": 2, "from": {"id": 5555}, "chat": {"id": 5555, "type": "private"}, "text": "hi"}})
+end = time.time() + 8
+while time.time() < end and not sent_since(n, "sendMessage"):
+    time.sleep(0.2)
+pair_sent = [b for m, b in sent_since(n, "sendMessage")]
+check("pairing: private sender gets own chat ID only", len(pair_sent) == 1 and pair_sent[0]["chat_id"] == 5555 and
+      pair_sent[0]["text"].startswith("Your chat ID is 5555. Paste it into /plugin"), pair_sent)
+check("pairing: configured = silent", finish(start("tg-pair.py", {"hook_event_name": "SessionStart"}), 5)[1] == "", "")
+for pid in procs:
+    try:
+        os.kill(int(pid), signal.SIGTERM)
+    except (OSError, ValueError):
+        pass
+
 # plugin options win over env vars; delays are clamped to 600
 out = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
                       "b = importlib.import_module('tg-bot'); print(b.CHAT, b.DELAY, b.USER, b.bot_token())", HOOKS],

@@ -19,8 +19,8 @@
     "chat_id": {
       "type": "string",
       "title": "Your Telegram chat ID",
-      "description": "Numeric ID of your private chat with the bot. Only this chat can answer.",
-      "required": true
+      "description": "Numeric ID of your private chat with the bot. Only this chat can answer. Leave empty to pair: send the bot a private message and it replies with your ID.",
+      "required": false
     },
     "away_delay": {
       "type": "number",
