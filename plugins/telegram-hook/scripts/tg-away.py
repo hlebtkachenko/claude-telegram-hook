@@ -3,7 +3,7 @@
 
 Claude Code fires Notification when it needs a permission or an answer. This hook
 starts a detached timer (TG_AWAY_DELAY seconds, default 600) and pings only if, when
-it ends: the session transcript has not changed (nobody answered), the Mac has had no
+it ends: the session transcript has not changed (nobody answered), the desktop has had no
 keyboard or mouse input for as long (skipped on cloud VMs), and no newer wait replaced
 this one. Only permission prompts and MCP elicitation forms ping here: tg-stop.py owns
 finished turns (idle_prompt), and a permission prompt that tg-ask.py claimed is skipped
@@ -58,9 +58,9 @@ def wait_and_ping(session, transcript, token, text, kind):
         return  # the session moved on: the user answered
     if kind == "permission_prompt" and bot.claimed(session, float(token.split(":")[1])):
         return  # tg-ask.py pinged or is holding this prompt
-    idle = bot.mac_idle_seconds()
+    idle = bot.idle_seconds()
     if idle is not None and idle < DELAY:
-        return  # the user is at the Mac
+        return  # the user is at the computer
     subprocess.run(["bash", os.path.join(HOOKS, "tg-ping.sh"), text], env={**os.environ, "TG_PING_RAW": "1"},
                    capture_output=True, timeout=30)
 
@@ -69,8 +69,8 @@ def main():
     if len(sys.argv) == 7 and sys.argv[1] == "--wait":
         wait_and_ping(*sys.argv[2:])
         return
-    if bot.on_mac() is None or not bot.bot_token() or not bot.CHAT:
-        return  # pings only from a configured Mac: cloud and Linux sessions keep their normal prompts
+    if bot.idle_seconds() is None or not bot.bot_token() or not bot.CHAT:
+        return  # pings only from a configured desktop: cloud, headless and Windows sessions keep their normal prompts
     data = json.load(sys.stdin)
     kind = data.get("notification_type", "")
     transcript = data.get("transcript_path", "")

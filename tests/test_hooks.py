@@ -55,7 +55,7 @@ class Fake(BaseHTTPRequestHandler):
         self.end_headers()
         try:
             self.wfile.write(out)
-        except BrokenPipeError:
+        except (BrokenPipeError, ConnectionResetError):
             pass  # a poller the test terminated mid-request
 
 
@@ -211,15 +211,39 @@ code, out, _ = finish(p, 5)
 check("at Mac at start: silent", code == 0 and out == "" and not sent_since(n0), (code, out))
 set_idle(999)
 
-# not a Mac: immediate exit, nothing sent
+# no idle reader (Windows, headless): immediate exit, nothing sent
 n0, t0 = len(calls), time.time()
 p = start("tg-ask.py", {"hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": {"command": "ls"}},
-          {"TG_AWAY_FAKE_PLATFORM": "linux"})
+          {"TG_AWAY_FAKE_PLATFORM": "win32"})
 code, out, _ = finish(p, 5)
-check("not Mac: exit 0 at once", code == 0 and out == "" and time.time() - t0 < 2 and not sent_since(n0), (code, out))
-p = start("tg-stop.py", {"hook_event_name": "Stop", "last_assistant_message": "Go?"}, {"TG_AWAY_FAKE_PLATFORM": "linux"})
+check("no idle reader: exit 0 at once", code == 0 and out == "" and time.time() - t0 < 2 and not sent_since(n0), (code, out))
+p = start("tg-stop.py", {"hook_event_name": "Stop", "last_assistant_message": "Go?"}, {"TG_AWAY_FAKE_PLATFORM": "win32"})
 code, out, _ = finish(p, 5)
-check("not Mac: tg-stop exits 0", code == 0 and not sent_since(n0), code)
+check("no idle reader: tg-stop exits 0", code == 0 and not sent_since(n0), code)
+
+# Linux idle readers: xprintidle first, then GNOME Mutter over gdbus, else None
+fakebin = os.path.join(T, "bin")
+os.makedirs(fakebin, exist_ok=True)
+IDLE_PY = ("import importlib, sys; sys.path.insert(0, sys.argv[1]); "
+           "print(importlib.import_module('tg-bot').idle_seconds())")
+
+
+def linux_idle(tools):
+    for name in ("xprintidle", "gdbus"):
+        path = os.path.join(fakebin, name)
+        if os.path.exists(path):
+            os.remove(path)
+        if name in tools:
+            open(path, "w").write(f"#!/bin/sh\necho '{tools[name]}'\n")
+            os.chmod(path, 0o755)
+    env = {**ENV, "TG_AWAY_FAKE_PLATFORM": "linux", "PATH": fakebin}
+    env.pop("TG_AWAY_FAKE_IDLE")
+    return subprocess.run([sys.executable, "-c", IDLE_PY, HOOKS], env=env, capture_output=True, text=True).stdout.strip()
+
+
+check("linux: xprintidle ms", linux_idle({"xprintidle": "5300", "gdbus": "(uint64 9000,)"}) == "5", "")
+check("linux: gdbus Mutter ms", linux_idle({"gdbus": "(uint64 7000,)"}) == "7", "")
+check("linux: no reader = None", linux_idle({}) == "None", "")
 
 # permission: text reply -> deny with message; Allow button -> allow
 n = len(calls)
@@ -277,7 +301,7 @@ json.dump(pinged + [55555], open(pinged_path, "w"))
 n = len(calls)
 subprocess.Popen([sys.executable, os.path.join(HOOKS, "tg-bot.py"), "poll"], env=ENV)
 time.sleep(1.1)
-reply(66666, "reply to a VPS alert")
+reply(66666, "reply to another alert")
 reply(55555, "late answer")
 end = time.time() + 8
 while time.time() < end and not sent_since(n, "sendMessage"):

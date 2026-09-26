@@ -2,9 +2,9 @@
 """Blocking hook: answer Claude's questions, plans and permission prompts from Telegram.
 
 Runs as PreToolUse for AskUserQuestion and ExitPlanMode, and as PermissionRequest for every
-other tool. On a Mac where the user has been away MIN_IDLE seconds, it holds until they have been idle
+other tool. On a desktop (macOS, Linux) where the user has been away MIN_IDLE seconds, it holds until they have been idle
 TG_AWAY_DELAY seconds, pings them with option buttons, and waits TG_REPLY_WINDOW seconds for a
-button press or a text reply to the ping. Any Mac input, the "Answer in app" button, a timeout
+button press or a text reply to the ping. Any keyboard or mouse input, the "Answer in app" button, a timeout
 or an error exit 0 with no output, so the normal dialog appears. Elsewhere it does nothing.
 """
 import importlib
@@ -92,7 +92,7 @@ def resolve(event, kind, inp, evts):
 
 
 def hold(presence, deadline):
-    """True once the user has been idle DELAY seconds; False on Mac input or deadline."""
+    """True once the user has been idle DELAY seconds; False on desktop input or deadline."""
     while time.time() < deadline:
         idle = presence.idle()
         if idle is None:
@@ -114,9 +114,9 @@ def main():
     if not bot.bot_token() or not bot.CHAT:
         bot.log(who, "skip: bot token or chat ID not configured")
         return
-    idle = bot.on_mac()
+    idle = bot.idle_seconds()
     if idle is None or idle < bot.MIN_IDLE:
-        bot.log(who, f"skip: idle={idle} (not a Mac, or below {bot.MIN_IDLE}s: user at the Mac)")
+        bot.log(who, f"skip: idle={idle} (no idle reader, or below {bot.MIN_IDLE}s: user at the computer)")
         return
     bot.log(who, f"hold: idle={idle}s, ping when idle>={bot.DELAY}s")
     start = time.time()
@@ -128,8 +128,8 @@ def main():
     mid, result = None, None
     try:
         if not hold(presence, deadline):
-            bot.unclaim(session)  # the user is at the Mac: tg-away.py may ping later if they leave
-            bot.log(who, "release: Mac input or deadline while holding")
+            bot.unclaim(session)  # the user is at the computer: tg-away.py may ping later if they leave
+            bot.log(who, "release: desktop input or deadline while holding")
             return
         mid = bot.send(message(data, kind), buttons(kind, inp.get("questions") or []))
         bot.log(who, f"pinged: message {mid}")
@@ -142,7 +142,7 @@ def main():
             return resolve(event, kind, inp, evts)
 
         result = bot.wait_for(mid, stop, min(time.time() + bot.REPLY_WINDOW, deadline))
-        bot.log(who, "done: " + ("Mac input" if result == "mac" else "timeout" if result is None
+        bot.log(who, "done: " + ("desktop input" if result == "mac" else "timeout" if result is None
                                  else "answer in app" if result == "app" else "answered from Telegram"))
         if result == "mac":
             bot.unclaim(session)

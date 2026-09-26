@@ -2,7 +2,7 @@
 """Telegram bot for Claude hooks: shared helpers, and the reply poller (`python3 tg-bot.py poll`).
 
 Hooks (tg-away.py, tg-ask.py, tg-stop.py) import the helpers: session/app/project lines,
-transcript reading, Mac idle time, sending a ping with inline buttons, and the waits registry.
+transcript reading, desktop idle time, sending a ping with inline buttons, and the waits registry.
 A hook that pings and then waits for the user registers a wait (STATE/waits/<message_id>.json)
 and starts the poller. The poller long-polls getUpdates, accepts only the configured chat, and writes
 button presses and text replies to STATE/answers/<message_id>.json. It never runs anything
@@ -16,7 +16,6 @@ import json
 import os
 import re
 import signal
-import socket
 import subprocess
 import sys
 import time
@@ -186,8 +185,6 @@ def where():
         return "Conductor", os.environ["CONDUCTOR_WORKSPACE_NAME"]
     if entry == "claude-desktop" and re.fullmatch(r"local_[A-Za-z0-9-]{1,64}", host_id):
         return "Desktop app", desktop_session(host_id).get("title", "")
-    if sys.platform != "darwin":
-        return f"Host {socket.gethostname()}", ""
     return ("Terminal" if entry in ("", "cli") else entry), ""
 
 
@@ -263,9 +260,27 @@ def permission_lines(block):
     return lines + [""]
 
 
-# ---------- Mac presence ----------
+# ---------- desktop presence ----------
 
-def mac_idle_seconds():
+def platform():
+    return os.environ.get("TG_AWAY_FAKE_PLATFORM", sys.platform)  # override: tests
+
+
+def run_ms(cmd):
+    """Idle milliseconds printed by an idle-time reader (xprintidle, gdbus), as seconds; None if it fails."""
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    nums = re.findall(r"\d+", out.stdout) if out.returncode == 0 else []
+    return int(nums[-1]) // 1000 if nums else None  # last number: gdbus prints "(uint64 1234,)"
+
+
+def idle_seconds():
+    """Keyboard/mouse idle seconds on this desktop: macOS ioreg, Linux xprintidle or GNOME Mutter. None: no reader."""
+    plat = platform()
+    if plat != "darwin" and not plat.startswith("linux"):
+        return None  # Windows and others: no idle reader
     fake = os.environ.get("TG_AWAY_FAKE_IDLE")  # tests: a number, or a file holding one
     if fake:
         if fake.startswith("/"):
@@ -274,30 +289,28 @@ def mac_idle_seconds():
             except (OSError, ValueError):
                 return None
         return int(fake)
+    if plat != "darwin":  # a headless server has neither reader (or no display to read): None
+        idle = run_ms(["xprintidle"])
+        return idle if idle is not None else run_ms(
+            ["gdbus", "call", "--session", "--dest", "org.gnome.Mutter.IdleMonitor", "--object-path",
+             "/org/gnome/Mutter/IdleMonitor/Core", "--method", "org.gnome.Mutter.IdleMonitor.GetIdletime"])
     try:
         out = subprocess.run(["ioreg", "-c", "IOHIDSystem"], capture_output=True, text=True, timeout=5).stdout
     except (OSError, subprocess.SubprocessError):
-        return None  # not a Mac: nobody sits at a cloud VM
+        return None
     m = re.search(r'"HIDIdleTime" = (\d+)', out)
     return int(m.group(1)) // 1_000_000_000 if m else None
 
 
-def on_mac():
-    """Idle seconds when this is a Mac whose HID idle time reads, else None."""
-    if os.environ.get("TG_AWAY_FAKE_PLATFORM", sys.platform) != "darwin":  # override: tests
-        return None
-    return mac_idle_seconds()
-
-
 class Presence:
-    """Detects Mac input: HID idle time only grows until a key or mouse event resets it."""
+    """Detects desktop input: idle time only grows until a key or mouse event resets it."""
 
     def __init__(self, idle):
         self.last = idle
 
     def idle(self):
-        """Current idle seconds, or None when the user touched the Mac since the last read."""
-        now = mac_idle_seconds()
+        """Current idle seconds, or None when the user touched the computer since the last read."""
+        now = idle_seconds()
         if now is None or now < self.last:
             return None
         self.last = now

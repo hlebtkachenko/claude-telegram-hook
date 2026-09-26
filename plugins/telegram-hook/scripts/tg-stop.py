@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Stop hook (asyncRewake): when Claude ends a turn with a question and the user is away, ask them on Telegram.
 
-On a Mac only. Waits until the user has been idle TG_AWAY_DELAY seconds while the transcript stays
-unchanged (Mac input only restarts the idle count), then pings if Claude's last message ends with
+On a desktop with an idle reader (macOS, Linux) only. Waits until the user has been idle TG_AWAY_DELAY seconds while the transcript stays
+unchanged (desktop input only restarts the idle count), then pings if Claude's last message ends with
 "?". Claude's message goes out as Markdown (tables, checkboxes, lists render), with the newest image
 of the turn if there is one. A text reply to the ping within TG_REPLY_WINDOW seconds wakes Claude:
 the note goes to stderr and the hook exits 2. Transcript change, "Answer in app" or timeout: exit 0.
@@ -21,9 +21,9 @@ SETTLE = 2  # ponytail: the transcript may still flush the final message right a
 def main():
     bot.exit_on_signals()
     data = json.load(sys.stdin)
-    idle = bot.on_mac()
+    idle = bot.idle_seconds()
     if idle is None or not bot.bot_token() or not bot.CHAT:
-        return 0  # not a Mac, or not configured
+        return 0  # no idle reader, or not configured
     transcript = data.get("transcript_path", "")
     who = f"tg-stop {data.get('session_id', '')[:8]}"
     text = (data.get("last_assistant_message") or bot.read_transcript(transcript)["text"]).strip()
@@ -34,11 +34,11 @@ def main():
     deadline = start + bot.DELAY + bot.REPLY_WINDOW + 60
     time.sleep(SETTLE)
     base = bot.mtime(transcript)
-    while True:  # Mac input only restarts the idle count: ping once the user has been away DELAY seconds
+    while True:  # desktop input only restarts the idle count: ping once the user has been away DELAY seconds
         if bot.mtime(transcript) != base or time.time() > deadline:
             bot.log(who, "release: " + ("transcript changed" if bot.mtime(transcript) != base else "deadline"))
             return 0
-        if (bot.mac_idle_seconds() or 0) >= bot.DELAY:
+        if (bot.idle_seconds() or 0) >= bot.DELAY:
             if deadline - time.time() < min(120, bot.REPLY_WINDOW):
                 bot.log(who, "release: too close to the hook timeout to ping")
                 return 0
