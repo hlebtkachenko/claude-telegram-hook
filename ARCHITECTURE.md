@@ -56,7 +56,7 @@ Presence: `idle_seconds()` in tg-bot.py reads `ioreg` on macOS, `xprintidle` or 
 
 ## 4. Data Stores
 
-Files only, under `$TMPDIR/claude-telegram-hook/` (mode 0700):
+Files only, under `claude-telegram-hook/` in `$TMPDIR`, else `$XDG_RUNTIME_DIR`, else `~/.cache` (never a shared `/tmp`). The directory must be a real directory owned by the user (no symlink); it is kept at mode 0700, and `hooks.log` is opened without following symlinks (0600):
 
 - `waits/<message_id>.json`: open pings (session, kind, questions, expiry, hook pid).
 - `answers/<message_id>.json`: events the poller recorded for a ping; `answers/inbox-<session>.json`: replies routed to a listening session.

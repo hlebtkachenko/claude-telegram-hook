@@ -16,6 +16,7 @@ import json
 import os
 import re
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -46,7 +47,8 @@ REPLY_WINDOW = seconds("REPLY_WINDOW", "TG_REPLY_WINDOW", "600")
 LINGER = int(os.environ.get("TG_POLL_LINGER", "60")) if os.environ.get("TG_POLL_LINGER", "").isdigit() else 60
 MIN_IDLE = 30  # below this at hook start the user is at the Mac: normal dialog, no ping
 USER = opt("USER_NAME", "TG_USER_NAME", "The user")  # names the replier in notes Claude reads
-STATE = os.path.join(os.environ.get("TMPDIR") or os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "claude-telegram-hook")
+STATE = os.path.join(os.environ.get("TMPDIR") or os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache"),
+                     "claude-telegram-hook")  # per-user dirs only, never a shared /tmp
 
 
 def log(who, msg):
@@ -55,11 +57,14 @@ def log(who, msg):
     if tok:
         msg = msg.replace(tok, "<token>")  # an InvalidURL error quotes the request path
     try:
-        os.makedirs(STATE, mode=0o700, exist_ok=True)
-        path = os.path.join(STATE, "hooks.log")
-        if os.path.exists(path) and os.path.getsize(path) > 1_000_000:
-            os.replace(path, path + ".1")  # ponytail: one rotation, 2 MB max
-        with open(path, "a") as f:
+        path = state("hooks.log")
+        try:
+            if os.lstat(path).st_size > 1_000_000:  # lstat + rename: a symlink is moved, never followed
+                os.replace(path, path + ".1")  # ponytail: one rotation, 2 MB max
+        except FileNotFoundError:
+            pass
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "a") as f:
             f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {who}[{os.getpid()}] {msg}\n")
     except OSError:
         pass
@@ -327,11 +332,13 @@ def mtime(path):
 # ---------- state: waits, answers, claims ----------
 
 def state(*parts):
-    for sub in ("", "waits", "answers", "claims", "files", "inbox", "failures"):
-        os.makedirs(os.path.join(STATE, sub), mode=0o700, exist_ok=True)
-    if os.lstat(STATE).st_uid != os.getuid():
-        raise PermissionError(f"{STATE} belongs to another user")  # shared /tmp: never use a planted directory
+    os.makedirs(STATE, mode=0o700, exist_ok=True)
+    st = os.lstat(STATE)
+    if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid():  # a symlink or another user's dir: planted
+        raise PermissionError(f"{STATE} is not a directory of this user")
     os.chmod(STATE, 0o700)
+    for sub in ("waits", "answers", "claims", "files", "inbox", "failures"):
+        os.makedirs(os.path.join(STATE, sub), mode=0o700, exist_ok=True)
     return os.path.join(STATE, *parts)
 
 

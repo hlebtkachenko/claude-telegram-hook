@@ -552,6 +552,17 @@ res = mcp([{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name"
 check("mcp: unset option -> error text", res and res[0]["result"]["isError"]
       and res[0]["result"]["content"][0]["text"].startswith("error: Telegram bot token or chat ID not configured"), res)
 
+# state dir: a symlink (planted dir) is refused; the log is never written through it
+evil_tmp, evil_target = os.path.join(T, "evil"), os.path.join(T, "evil-target")
+os.makedirs(evil_tmp, exist_ok=True)
+os.makedirs(evil_target, exist_ok=True)
+if not os.path.islink(os.path.join(evil_tmp, "claude-telegram-hook")):
+    os.symlink(evil_target, os.path.join(evil_tmp, "claude-telegram-hook"))
+subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
+                "importlib.import_module('tg-bot').log('t', 'x')", HOOKS], env={**ENV, "TMPDIR": evil_tmp})
+check("symlinked state dir refused", os.listdir(evil_target) == [], os.listdir(evil_target))
+check("log is 0600", os.stat(os.path.join(STATE, "hooks.log")).st_mode & 0o777 == 0o600, "")
+
 # plugin options win over env vars; delays are clamped to 600
 out = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
                       "b = importlib.import_module('tg-bot'); print(b.CHAT, b.DELAY, b.USER, b.bot_token())", HOOKS],

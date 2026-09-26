@@ -75,7 +75,7 @@ Change them in `/plugin` (telegram-hook, Configure options). The non-secret opti
 
 ## Security
 
-- What goes to Telegram: question and option text, plans, tool commands and file paths (commands cut at 800 characters), the project and branch name, the session title, Claude's last message, and the newest image of the turn, API error details, and whatever Claude sends through `notify`. Photos and files you send back are downloaded (20 MB max, the Bot API limit) to `$TMPDIR/claude-telegram-hook/files/` (mode 0600) and Claude can read them. Telegram bot chats are not end-to-end encrypted. Don't use this plugin where that content must not leave the machine.
+- What goes to Telegram: question and option text, plans, tool commands and file paths (commands cut at 800 characters), the project and branch name, the session title, Claude's last message, and the newest image of the turn, API error details, and whatever Claude sends through `notify`. Photos and files you send back are downloaded (20 MB max, the Bot API limit) to the state directory's `files/` (mode 0600; see Troubleshooting for where it is) and Claude can read them. Telegram bot chats are not end-to-end encrypted. Don't use this plugin where that content must not leave the machine.
 - Only the configured chat can answer. Buttons and replies from anyone else are dropped. While pairing, the bot only tells a private sender their own chat ID.
 - Telegram input is never executed. It only becomes an answer, an allow/deny decision, or a note to Claude.
 - An Allow tap in Telegram approves that one call, the same as the dialog. Always allow saves the rules Claude Code proposed, the same as "don't ask again". Anyone holding your phone and Telegram session can approve prompts while you are away, so keep Telegram locked.
@@ -83,7 +83,7 @@ Change them in `/plugin` (telegram-hook, Configure options). The non-secret opti
 
 ## Limitations
 
-- macOS and Linux desktops only (see Requirements). On Linux, `TMPDIR` is often unset, so the state directory is `/tmp/claude-telegram-hook`.
+- macOS and Linux desktops only (see Requirements).
 - Hooks run for at most 1320 seconds, which is why both timers are capped at 600.
 - "A turn that ends with a question" means the last message ends with `?`.
 - Replies to earlier pings reach a session only while it listens: from the end of a turn until the next turn starts, at most away delay + reply window.
@@ -92,10 +92,10 @@ Change them in `/plugin` (telegram-hook, Configure options). The non-secret opti
 
 ## Troubleshooting
 
-Every hook decision (skip, hold, ping, answer) is logged, without secrets, to:
+Every hook decision (skip, hold, ping, answer) is logged, without secrets, to `hooks.log` in the state directory: `claude-telegram-hook/` under `$TMPDIR` (macOS), else `$XDG_RUNTIME_DIR` (most Linux desktops), else `~/.cache`.
 
 ```bash
-tail -f "$TMPDIR/claude-telegram-hook/hooks.log"
+tail -f "${TMPDIR:-${XDG_RUNTIME_DIR:-$HOME/.cache}}/claude-telegram-hook/hooks.log"
 ```
 
 ## Development
