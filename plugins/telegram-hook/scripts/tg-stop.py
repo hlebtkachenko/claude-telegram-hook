@@ -50,6 +50,7 @@ def main():
     session = re.sub(r"[^\w-]", "", data.get("session_id", "")) or "unknown"
     mid = bot.send(body, [("Answer in app", "app")], bot.latest_image(transcript))
     bot.log(who, f"pinged: message {mid}")
+    reply = None
     try:
         bot.open_wait(mid, session, "stop")
         bot.ensure_poller()
@@ -67,6 +68,7 @@ def main():
         reply = bot.wait_for(mid, stop, min(time.time() + bot.REPLY_WINDOW, deadline))
     finally:
         bot.close_wait(mid)
+        bot.close_ping(mid, isinstance(reply, dict))
     bot.log(who, "done: " + (reply if isinstance(reply, str) else "timeout" if reply is None else "reply, waking Claude"))
     if not isinstance(reply, dict):
         return 0

@@ -152,6 +152,7 @@ def main():
     finally:
         if mid is not None:
             bot.close_wait(mid)
+            bot.close_ping(mid, isinstance(result, dict))
         if result not in (None, "mac"):
             bot.claim(session, time.time() + 30)  # the dialog may still notify: skip that ping
     if isinstance(result, dict):

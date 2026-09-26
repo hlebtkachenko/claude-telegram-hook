@@ -160,6 +160,7 @@ QM = {"question": "Which parts?", "multiSelect": True, "options": [{"label": "A"
 set_idle(999)
 
 # single question, button
+n_close = len(calls)
 code, out, msg = ask([Q1], lambda m: button(m, "q0o1"))
 spec = out.get("hookSpecificOutput", {}) if isinstance(out, dict) else {}
 check("single: allow", spec.get("permissionDecision") == "allow" and spec.get("hookEventName") == "PreToolUse", out)
@@ -168,6 +169,11 @@ check("single: questions echoed", spec.get("updatedInput", {}).get("questions") 
 kb = (msg or ("", {}))[1].get("reply_markup", {}).get("inline_keyboard", [])
 check("buttons: options + app", [r[0]["text"] for r in kb] == ["Short", "Long", "Answer in app"], kb)
 check("ping heading", "### Claude has a question" in (msg or ("", {}))[1].get("rich_message", {}).get("markdown", ""), msg)
+edits = [b for m, b in sent_since(n_close, "editMessageReplyMarkup")]
+reacts = [b for m, b in sent_since(n_close, "setMessageReaction")]
+check("answered: buttons removed", edits and edits[-1].get("reply_markup") == {"inline_keyboard": []}
+      and edits[-1].get("message_id") == cfg["next_id"], edits)
+check("answered: thumbs-up", reacts and reacts[-1].get("reaction") == [{"type": "emoji", "emoji": "\U0001F44D"}], reacts)
 
 # two questions: second answered by button, first by text reply (as Other)
 code, out, msg = ask([Q1, Q2], lambda m: (button(m, "q1o0"), time.sleep(0.5), reply(m, "Ten minutes")))
@@ -187,8 +193,11 @@ toasts = [b.get("text") for m, b in sent_since(n0, "answerCallbackQuery")]
 check("toggle toast shows selection", "Selected: A, C" in toasts and "Selected: B, C" in toasts, toasts)
 
 # Answer in app
+n_close = len(calls)
 code, out, msg = ask([Q1], lambda m: button(m, "app"))
 check("answer in app: exit 0, no output", code == 0 and out == "", (code, out))
+check("answer in app: buttons removed, no reaction", sent_since(n_close, "editMessageReplyMarkup")
+      and not sent_since(n_close, "setMessageReaction"), sent_since(n_close))
 
 # other chat ignored, then the real answer
 n0 = len(calls)
@@ -338,6 +347,7 @@ code, out, err = finish(p, 10)
 check("SIGTERM: exit 0, no decision", code == 0 and out == "", (code, out, err))
 check("SIGTERM: ping closed", mid and not os.path.exists(os.path.join(STATE, "waits", f"{mid}.json")), mid)
 check("SIGTERM: claim released", not os.path.exists(os.path.join(STATE, "claims", "sig")), "")
+check("SIGTERM: buttons removed", any(b.get("message_id") == mid for m, b in sent_since(n, "editMessageReplyMarkup")), mid)
 
 # only one poller
 lockfile = os.path.join(T, "claude-telegram-hook", "poller.lock")

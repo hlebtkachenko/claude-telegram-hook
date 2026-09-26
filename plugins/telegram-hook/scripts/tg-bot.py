@@ -385,6 +385,18 @@ def exit_on_signals():
         signal.signal(sig, handler)
 
 
+def close_ping(message_id, answered=False):
+    """Best effort: drop the ping's buttons; a thumbs-up when answered from Telegram. Never raises."""
+    calls = [("editMessageReplyMarkup", {"reply_markup": {"inline_keyboard": []}})]
+    if answered:
+        calls.append(("setMessageReaction", {"reaction": [{"type": "emoji", "emoji": "\U0001F44D"}]}))
+    for method, params in calls:
+        try:
+            api(method, {"chat_id": CHAT, "message_id": message_id, **params}, timeout=3)
+        except Exception:
+            pass
+
+
 def close_wait(message_id):
     for sub in ("waits", "answers"):
         try:
@@ -404,7 +416,9 @@ def open_waits():
         if wait and wait.get("expires", 0) > now and alive(wait.get("pid")):
             found[int(os.path.basename(path)[:-5])] = wait
         elif wait:
-            close_wait(int(os.path.basename(path)[:-5]))  # expired, or its hook was killed: stale
+            mid = int(os.path.basename(path)[:-5])
+            close_wait(mid)  # expired, or its hook was killed: stale
+            close_ping(mid)
     return found
 
 
