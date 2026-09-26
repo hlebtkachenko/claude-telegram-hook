@@ -302,13 +302,26 @@ check("permission buttons", [r[0]["text"] for r in msg[1]["reply_markup"]["inlin
 SUGG = [{"type": "addRules", "rules": [{"toolName": "Bash", "ruleContent": "make deploy"}], "behavior": "allow",
          "destination": "localSettings"}]
 n = len(calls)
-p = start("tg-ask.py", {**perm, "permission_suggestions": SUGG + [{"type": "setMode", "mode": "acceptEdits",
-                                                                  "destination": "session"}]})
+p = start("tg-ask.py", {**perm, "permission_suggestions": SUGG + [
+    {"type": "setMode", "mode": "acceptEdits", "destination": "session"},
+    {"type": "addRules", "rules": [{"toolName": "Bash"}], "behavior": "allow", "destination": "projectSettings"},
+    {"type": "addRules", "rules": [{"toolName": "Bash", "ruleContent": "rm *"}], "behavior": "deny",
+     "destination": "session"}]})
 mid, msg = ping_id(n)
 button(mid, "always")
 code, out, _ = finish(p)
 check("always allow: addRules echoed, setMode dropped", json.loads(out or "{}").get("hookSpecificOutput", {}).get("decision") ==
       {"behavior": "allow", "updatedPermissions": SUGG}, out)
+check("always allow: rules shown", "Always allow saves:\n- `Bash(make deploy) -> localSettings`"
+      in (msg[1]["rich_message"]["markdown"] if msg else "") and "projectSettings" not in msg[1]["rich_message"]["markdown"], msg)
+n = len(calls)
+p = start("tg-ask.py", {**perm, "permission_suggestions": [
+    {"type": "addRules", "rules": [{"toolName": "Bash"}], "behavior": "allow", "destination": "projectSettings"}]})
+mid2, msg2 = ping_id(n)
+button(mid2, "allow")
+finish(p)
+check("always allow: none left, no button", msg2 and [r[0]["text"] for r in msg2[1]["reply_markup"]["inline_keyboard"]] ==
+      ["Allow", "Deny", "Answer in app"], msg2)
 check("always allow button", [r[0]["text"] for r in msg[1]["reply_markup"]["inline_keyboard"]] ==
       ["Allow", "Always allow", "Deny", "Answer in app"], msg)
 p = start("tg-ask.py", {**perm, "tool_name": "AskUserQuestion"})

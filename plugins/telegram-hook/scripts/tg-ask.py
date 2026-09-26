@@ -33,7 +33,29 @@ def buttons(kind, questions, always=False):
     return rows + [("Answer in app", "app")]
 
 
-def message(data, kind):
+def always_rules(data, event):
+    """The permission_suggestions an "Always allow" tap may echo: addRules allow entries saved to the project's
+    local settings or the session only. setMode, other behaviors, shared or user-wide destinations: dropped."""
+    if event != "PermissionRequest":
+        return []
+    return [s for s in data.get("permission_suggestions") or [] if isinstance(s, dict) and s.get("type") == "addRules"
+            and s.get("behavior") == "allow" and s.get("destination") in ("localSettings", "session")
+            and isinstance(s.get("rules"), list) and s["rules"]]
+
+
+def rule_lines(suggestions):
+    """What "Always allow" saves, one `toolName(ruleContent) -> destination` per rule."""
+    lines = []
+    for s in suggestions:
+        for rule in s["rules"]:
+            rule = rule if isinstance(rule, dict) else {}
+            content = f"({rule['ruleContent']})" if rule.get("ruleContent") else ""
+            text = f"{rule.get('toolName', '?')}{content} -> {s['destination']}".replace("`", "'")
+            lines.append(f"- `{bot.cut(text, 300)}`")
+    return ["Always allow saves:"] + lines + [""] if lines else []
+
+
+def message(data, kind, suggestions=()):
     inp = data.get("tool_input") or {}
     cwd = data.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     lines = bot.header(HEADINGS[kind], cwd, bot.read_transcript(data.get("transcript_path", ""))["title"])
@@ -42,7 +64,7 @@ def message(data, kind):
     elif kind == "plan":
         lines += [bot.cut(inp.get("plan", ""), bot.BODY_MAX), ""]
     else:
-        lines += bot.permission_lines({"name": data.get("tool_name"), "input": inp})
+        lines += bot.permission_lines({"name": data.get("tool_name"), "input": inp}) + rule_lines(suggestions)
     return "\n".join(lines + bot.reply_line()).strip()
 
 
@@ -136,12 +158,9 @@ def main():
             bot.unclaim(session)  # the user is at the computer: tg-away.py may ping later if they leave
             bot.log(who, "release: desktop input or deadline while holding")
             return
-        # "Always allow" echoes the addRules entries of the permission_suggestions Claude Code passed, as the
-        # dialog's "don't ask again" does; setMode and other entries are dropped so a tap never changes the mode
-        suggestions = [s for s in data.get("permission_suggestions") or []
-                       if isinstance(s, dict) and s.get("type") == "addRules"] if event == "PermissionRequest" else []
-        suggestions = suggestions or None
-        mid = bot.send(message(data, kind), buttons(kind, inp.get("questions") or [], bool(suggestions)))
+        # "Always allow" echoes Claude Code's own suggestions (filtered, never built here), as "don't ask again" does
+        suggestions = always_rules(data, event) or None
+        mid = bot.send(message(data, kind, suggestions or ()), buttons(kind, inp.get("questions") or [], bool(suggestions)))
         bot.log(who, f"pinged: message {mid}")
         quote = ((inp.get("questions") or [{}])[0].get("question", "") if kind == "question" else
                  HEADINGS[kind] if kind == "plan" else bot.tool_ask({"name": tool, "input": inp})[0])
