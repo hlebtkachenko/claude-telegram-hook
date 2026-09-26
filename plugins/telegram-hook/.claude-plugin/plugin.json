@@ -1,13 +1,13 @@
 {
   "name": "telegram-hook",
   "displayName": "Telegram Hook",
-  "version": "0.1.0",
-  "description": "macOS only. When you step away from your Mac, Claude Code's questions, plan approvals and permission prompts come to Telegram with answer buttons; your reply goes back into the session.",
+  "version": "0.2.0",
+  "description": "macOS and Linux desktops. When you step away from your computer, Claude Code's questions, plan approvals and permission prompts come to Telegram with answer buttons; your reply (text, photo or file) goes back into the session.",
   "author": { "name": "Hleb Tkachenko", "url": "https://github.com/hlebtkachenko" },
   "homepage": "https://github.com/hlebtkachenko/claude-telegram-hook",
   "repository": "https://github.com/hlebtkachenko/claude-telegram-hook",
   "license": "MIT",
-  "keywords": ["telegram", "notifications", "permissions", "remote", "macos"],
+  "keywords": ["telegram", "notifications", "permissions", "remote", "macos", "linux"],
   "mcpServers": {
     "telegram": {
       "command": "python3",
@@ -36,7 +36,7 @@
     "away_delay": {
       "type": "number",
       "title": "Away delay (seconds)",
-      "description": "How long the Mac must be idle before a prompt is sent to Telegram.",
+      "description": "How long the computer must be idle before a prompt is sent to Telegram.",
       "default": 600,
       "min": 1,
       "max": 600
