@@ -20,9 +20,10 @@ HEADINGS = {"question": "Claude has a question", "plan": "Claude wants to finish
             "permission": "Claude needs permission"}
 
 
-def buttons(kind, questions):
+def buttons(kind, questions, always=False):
     if kind != "question":
-        return [("Allow", "allow"), ("Deny", "deny"), ("Answer in app", "app")]
+        return [("Allow", "allow")] + ([("Always allow", "always")] if always else []) + [
+            ("Deny", "deny"), ("Answer in app", "app")]
     rows, many = [], len(questions) > 1
     for qi, q in enumerate(questions):
         num = f"{qi + 1}. " if many else ""
@@ -45,10 +46,12 @@ def message(data, kind):
     return "\n".join(lines + bot.reply_line()).strip()
 
 
-def decide(event, kind, inp, allow, reason=""):
+def decide(event, kind, inp, allow, reason="", permissions=None):
     """Decision JSON in the shape the hook event expects."""
     if event == "PermissionRequest":
         decision = {"behavior": "allow"} if allow else {"behavior": "deny", "message": reason}
+        if allow and permissions:
+            decision["updatedPermissions"] = permissions  # Claude Code's own suggestions, unchanged
         return {"hookSpecificOutput": {"hookEventName": event, "decision": decision}}
     out = {"hookEventName": event, "permissionDecision": "allow" if allow else "deny"}
     if allow:
@@ -58,7 +61,7 @@ def decide(event, kind, inp, allow, reason=""):
     return {"hookSpecificOutput": out}
 
 
-def resolve(event, kind, inp, evts):
+def resolve(event, kind, inp, evts, suggestions=None):
     """"app" to hand back to the dialog, the decision JSON once complete, else None (keep waiting)."""
     questions = inp.get("questions") or []
     answers = {}
@@ -67,6 +70,8 @@ def resolve(event, kind, inp, evts):
         if data == "app":
             return "app"
         if kind != "question":
+            if data == "always" and suggestions:
+                return decide(event, kind, inp, True, permissions=suggestions)
             if data in ("allow", "deny"):
                 return decide(event, kind, inp, data == "allow", f"{bot.USER} denied this in Telegram")
             if text:
@@ -131,7 +136,9 @@ def main():
             bot.unclaim(session)  # the user is at the computer: tg-away.py may ping later if they leave
             bot.log(who, "release: desktop input or deadline while holding")
             return
-        mid = bot.send(message(data, kind), buttons(kind, inp.get("questions") or []))
+        # "Always allow" echoes the permission_suggestions Claude Code passed, as the dialog's "don't ask again" does
+        suggestions = (data.get("permission_suggestions") or None) if event == "PermissionRequest" else None
+        mid = bot.send(message(data, kind), buttons(kind, inp.get("questions") or [], bool(suggestions)))
         bot.log(who, f"pinged: message {mid}")
         bot.open_wait(mid, session, kind, inp.get("questions") or [])
         bot.ensure_poller()
@@ -139,7 +146,7 @@ def main():
         def stop(evts):
             if presence.idle() is None:
                 return "mac"
-            return resolve(event, kind, inp, evts)
+            return resolve(event, kind, inp, evts, suggestions)
 
         result = bot.wait_for(mid, stop, min(time.time() + bot.REPLY_WINDOW, deadline))
         bot.log(who, "done: " + ("desktop input" if result == "mac" else "timeout" if result is None
