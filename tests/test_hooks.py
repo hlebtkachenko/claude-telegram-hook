@@ -356,8 +356,9 @@ cfg["fail_rich"] = False
 # expired reply: only for a message that was a ping
 STATE = os.path.join(T, "claude-telegram-hook")
 pinged_path = os.path.join(STATE, "pinged.json")
-pinged = json.load(open(pinged_path)) if os.path.exists(pinged_path) else []
-json.dump(pinged + [55555], open(pinged_path, "w"))
+pinged = json.load(open(pinged_path)) if os.path.exists(pinged_path) else {}
+check("pinged.json maps id to session", any(v.get("session") == "sp" for v in pinged.values()), pinged)
+json.dump({**pinged, "55555": {"session": "gone", "quote": "Old?"}}, open(pinged_path, "w"))
 n = len(calls)
 subprocess.Popen([sys.executable, os.path.join(HOOKS, "tg-bot.py"), "poll"], env=ENV)
 time.sleep(1.1)
@@ -367,7 +368,7 @@ end = time.time() + 8
 while time.time() < end and not sent_since(n, "sendMessage"):
     time.sleep(0.2)
 texts = [b.get("text") for m, b in sent_since(n, "sendMessage")]
-check("expired reply answered", "This ping has expired; open the session to answer." in texts, texts)
+check("not listening reply answered", "This session is not listening now; open it to answer." in texts, texts)
 check("reply to a non-ping: no expired note", len(texts) == 1, texts)
 
 # a killed hook's ping counts as closed: tap gets "Expired", wait file removed
@@ -431,9 +432,31 @@ check("tg-stop note", err.startswith("Alex replied in Telegram (") and 'to your 
       and err.rstrip().endswith(":\nyes, go"), err)
 check("tg-stop body not escaped", msg and "| 1 | 2 |" in msg[1]["rich_message"]["markdown"], msg)
 n = len(calls)
-p = start("tg-stop.py", {"hook_event_name": "Stop", "transcript_path": tr, "last_assistant_message": "Done."})
-code, out, err = finish(p, 5)
-check("tg-stop: no question, silent", code == 0 and not sent_since(n), code)
+p = start("tg-stop.py", {"hook_event_name": "Stop", "session_id": "sd", "transcript_path": tr, "last_assistant_message": "Done."})
+time.sleep(3)
+check("tg-stop: no question, inbox open", os.path.exists(os.path.join(STATE, "inbox", "sd.json")), "")
+open(tr, "a").write("{}\n")  # the session moved on
+code, out, err = finish(p, 10)
+check("tg-stop: no question, silent; exits on transcript change", code == 0 and not sent_since(n, "sendRichMessage")
+      and not sent_since(n, "sendMessage") and not os.path.exists(os.path.join(STATE, "inbox", "sd.json")), (code, err))
+
+# reply to a past ping of a listening session wakes Claude (text or photo)
+pinged = json.load(open(pinged_path))
+json.dump({**pinged, "88888": {"session": "si", "quote": "Deploy now?"}}, open(pinged_path, "w"))
+tr_i = os.path.join(T, "inbox.jsonl")
+open(tr_i, "w").write("{}\n")
+n = len(calls)
+p = start("tg-stop.py", {"hook_event_name": "Stop", "session_id": "si", "transcript_path": tr_i,
+                         "last_assistant_message": "All done."})
+time.sleep(3)
+reply_photo(88888, "go ahead")
+code, out, err = finish(p)
+check("inbox: exit 2", code == 2, (code, err))
+check("inbox: note", err.startswith("Alex replied in Telegram (") and 'to your message "Deploy now?":\ngo ahead\nAttached: /' in err,
+      err)
+check("inbox: thumbs-up on the old ping", any(b.get("message_id") == 88888 for m, b in sent_since(n, "setMessageReaction")),
+      sent_since(n))
+check("inbox: no message sent", not sent_since(n, "sendRichMessage") and not sent_since(n, "sendMessage"), sent_since(n))
 
 # not configured: silent, and a token in an error never reaches the log
 n0, t0 = len(calls), time.time()

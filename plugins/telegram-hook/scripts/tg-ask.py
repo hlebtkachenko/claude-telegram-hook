@@ -140,7 +140,9 @@ def main():
         suggestions = (data.get("permission_suggestions") or None) if event == "PermissionRequest" else None
         mid = bot.send(message(data, kind), buttons(kind, inp.get("questions") or [], bool(suggestions)))
         bot.log(who, f"pinged: message {mid}")
-        bot.open_wait(mid, session, kind, inp.get("questions") or [])
+        quote = ((inp.get("questions") or [{}])[0].get("question", "") if kind == "question" else
+                 HEADINGS[kind] if kind == "plan" else bot.tool_ask({"name": tool, "input": inp})[0])
+        bot.open_wait(mid, session, kind, inp.get("questions") or [], quote)
         bot.ensure_poller()
 
         def stop(evts):

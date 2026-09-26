@@ -67,7 +67,7 @@ HOOKS = os.path.dirname(os.path.abspath(__file__))
 API = os.environ.get("TG_API_BASE", "https://api.telegram.org")  # override: tests
 CHAT = opt("CHAT_ID", "TELEGRAM_CHAT_ID")
 BODY_MAX = 3000  # ponytail: fixed cut under Telegram's 4096-char plain limit
-EXPIRED = "This ping has expired; open the session to answer."
+NOT_LISTENING = "This session is not listening now; open it to answer."
 DESKTOP_SESSIONS = os.environ.get("TG_AWAY_DESKTOP_SESSIONS",  # override: tests
                                   os.path.expanduser("~/Library/Application Support/Claude/claude-code-sessions"))
 
@@ -348,19 +348,54 @@ def read_json(path, default=None):
         return default
 
 
-def open_wait(message_id, session, kind, questions=None):
+def pinged():
+    """{str(message_id): {"session", "quote"}} of the last 500 pings (a 0.1 list of ids still reads)."""
+    data = read_json(state("pinged.json"), {})
+    return {str(m): {} for m in data} if isinstance(data, list) else data if isinstance(data, dict) else {}
+
+
+def open_wait(message_id, session, kind, questions=None, quote=""):
     """Register a ping the hook in this process waits on (its pid lets the poller spot a killed hook)."""
     now = time.time()
     write_json(state("waits", f"{message_id}.json"), {"session": session, "kind": kind, "questions": questions or [],
                                                       "opened": now, "expires": now + REPLY_WINDOW,
                                                       "pid": os.getpid()})
-    pinged = read_json(state("pinged.json"), [])
-    write_json(state("pinged.json"), (pinged + [message_id])[-500:])  # ponytail: last 500 pings only
+    seen = pinged()
+    seen[str(message_id)] = {"session": session, "quote": cut(" ".join(quote.split()), 120)}
+    write_json(state("pinged.json"), dict(list(seen.items())[-500:]))  # ponytail: last 500 pings only
 
 
-def was_pinged(message_id):
-    """True for a message a hook sent as a ping (so a late reply to it earns the "expired" note)."""
-    return message_id in read_json(state("pinged.json"), [])
+def ping_info(message_id):
+    """{"session", "quote"} for a message a hook sent as a ping, else None (replies to other messages: silence)."""
+    return pinged().get(str(message_id))
+
+
+def open_inbox(session, until):
+    """Listen for replies to any earlier ping of this session (tg-stop.py, silent: no message sent)."""
+    try:
+        os.remove(state("answers", f"inbox-{session}.json"))  # a killed listener's leftover reply
+    except OSError:
+        pass
+    write_json(state("inbox", f"{session}.json"), {"expires": until, "pid": os.getpid()})
+
+
+def close_inbox(session):
+    """Drop this process's inbox (a newer listener's registration stays)."""
+    if (read_json(state("inbox", f"{session}.json"), {}) or {}).get("pid") == os.getpid():
+        for path in (state("inbox", f"{session}.json"), state("answers", f"inbox-{session}.json")):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+
+def open_inboxes():
+    now, found = time.time(), set()
+    for path in glob.glob(state("inbox", "*.json")):
+        box = read_json(path) or {}
+        if box.get("expires", 0) > now and alive(box.get("pid")):
+            found.add(os.path.basename(path)[:-5])
+    return found
 
 
 def alive(pid):
@@ -614,12 +649,18 @@ def on_message(msg, waits):
         return  # not a reply
     if target.get("message_id") in waits:
         record(target["message_id"], reply_event(msg, text))
-    elif was_pinged(target.get("message_id")):  # a closed ping; replies to alerts or manual pings: silence
-        try:
-            api("sendMessage", {"chat_id": CHAT, "text": EXPIRED,
-                                "reply_parameters": {"message_id": msg.get("message_id")}})
-        except Exception:
-            pass
+        return
+    ping = ping_info(target.get("message_id"))  # a closed ping; replies to alerts or manual pings: silence
+    if ping is None:
+        return
+    session = ping.get("session")
+    if session and session in open_inboxes():  # tg-stop.py listens: this wakes Claude
+        record(f"inbox-{session}", {**reply_event(msg, text), "ping": target["message_id"], "quote": ping.get("quote", "")})
+        return
+    try:
+        api("sendMessage", {"chat_id": CHAT, "text": NOT_LISTENING, "reply_parameters": {"message_id": msg.get("message_id")}})
+    except Exception:
+        pass
 
 
 def poll():
@@ -634,7 +675,7 @@ def poll():
     last_open = time.time()
     while time.time() - last_open < LINGER:
         waits = open_waits()
-        if waits:
+        if waits or open_inboxes():
             last_open = time.time()
         offset = read_json(state("offset"), 0)
         try:
