@@ -69,7 +69,14 @@ def log(who, msg):
     except OSError:
         pass
 HOOKS = os.path.dirname(os.path.abspath(__file__))
-API = os.environ.get("TG_API_BASE", "https://api.telegram.org")  # override: tests
+_BASE = os.environ.get("TG_API_BASE", "")
+TESTING = bool(re.fullmatch(r"http://(127\.0\.0\.1|localhost)(:\d+)?", _BASE))  # tests: a local fake server only
+API = _BASE if TESTING else "https://api.telegram.org"
+
+
+def fake(name):
+    """A TG_AWAY_FAKE_* test override, honoured only while TG_API_BASE points at a local fake server."""
+    return os.environ.get(name) if TESTING else None
 CHAT = opt("CHAT_ID", "TELEGRAM_CHAT_ID")
 BODY_MAX = 3000  # ponytail: fixed cut under Telegram's 4096-char plain limit
 NOT_LISTENING = "This session is not listening now; open it to answer."
@@ -268,7 +275,7 @@ def permission_lines(block):
 # ---------- desktop presence ----------
 
 def platform():
-    return os.environ.get("TG_AWAY_FAKE_PLATFORM", sys.platform)  # override: tests
+    return fake("TG_AWAY_FAKE_PLATFORM") or sys.platform
 
 
 def run_ms(cmd):
@@ -286,14 +293,14 @@ def idle_seconds():
     plat = platform()
     if plat != "darwin" and not plat.startswith("linux"):
         return None  # Windows and others: no idle reader
-    fake = os.environ.get("TG_AWAY_FAKE_IDLE")  # tests: a number, or a file holding one
-    if fake:
-        if fake.startswith("/"):
+    faked = fake("TG_AWAY_FAKE_IDLE")  # tests: a number, or a file holding one
+    if faked:
+        if faked.startswith("/"):
             try:
-                return int(open(fake).read().strip())
+                return int(open(faked).read().strip())
             except (OSError, ValueError):
                 return None
-        return int(fake)
+        return int(faked)
     if plat != "darwin":  # a headless server has neither reader (or no display to read): None
         idle = run_ms(["xprintidle"])
         return idle if idle is not None else run_ms(

@@ -563,6 +563,16 @@ subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0,
 check("symlinked state dir refused", os.listdir(evil_target) == [], os.listdir(evil_target))
 check("log is 0600", os.stat(os.path.join(STATE, "hooks.log")).st_mode & 0o777 == 0o600, "")
 
+# TG_API_BASE: only a local URL; otherwise the real API and no TG_AWAY_FAKE_* overrides (nothing is called here)
+for base, want in (("https://evil.example", "https://api.telegram.org False"),
+                   ("http://127.0.0.1.evil.example", "https://api.telegram.org False"),
+                   ("http://localhost:8080", "http://localhost:8080 True")):
+    got = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
+                          "b = importlib.import_module('tg-bot'); print(b.API, b.platform() == 'win32')", HOOKS],
+                         env={**ENV, "TG_API_BASE": base, "TG_AWAY_FAKE_PLATFORM": "win32"},
+                         capture_output=True, text=True).stdout.strip()
+    check(f"api base {base}", got == want, got)
+
 # plugin options win over env vars; delays are clamped to 600
 out = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
                       "b = importlib.import_module('tg-bot'); print(b.CHAT, b.DELAY, b.USER, b.bot_token())", HOOKS],
