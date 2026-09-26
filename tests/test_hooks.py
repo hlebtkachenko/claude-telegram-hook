@@ -296,6 +296,8 @@ mid, msg = ping_id(n)
 button(mid, "allow")
 code, out, _ = finish(p)
 check("permission allow", json.loads(out or "{}").get("hookSpecificOutput", {}).get("decision") == {"behavior": "allow"}, out)
+pm = msg[1]["rich_message"]["markdown"] if msg else ""
+check("bash: command headline, description below", "**Run: make deploy**\nDeploy" in pm and "truncated" not in pm, pm)
 check("permission buttons", [r[0]["text"] for r in msg[1]["reply_markup"]["inline_keyboard"]] == ["Allow", "Deny", "Answer in app"], msg)
 SUGG = [{"type": "addRules", "rules": [{"toolName": "Bash", "ruleContent": "make deploy"}], "behavior": "allow",
          "destination": "localSettings"}]

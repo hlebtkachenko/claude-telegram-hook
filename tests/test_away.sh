@@ -33,6 +33,7 @@ mkdir -p "$T/claude-telegram-hook/claims"; echo '{"until": 9999999999}' >"$T/cla
 tr_tool "make deploy" s13;              run s13 fire permission_prompt s13
 mkdir -p "$T/ds/a/b"; echo '{"title":"Desk title","remoteControlEnabled":true,"bridgeSessionIds":["session_01Abc"]}' >"$T/ds/a/b/local_rc-1.json"
 tr_text "Remote?" s12;                  TG_AWAY_DESKTOP_SESSIONS=$T/ds CLAUDE_CODE_ENTRYPOINT=claude-desktop CLAUDE_CODE_HOST_SESSION_ID=local_rc-1 run s12 fire permission_prompt s12
+tr_tool "echo $(printf 'x%.0s' $(seq 900))" s14; run s14 fire permission_prompt s14
 U=0b5c0f6e-1111-2222-3333-444455556666
 tr_text "Resume?" $U;                   run $U fire permission_prompt $U
 sleep 5
@@ -52,9 +53,11 @@ check "second wait replaces first" s6 'Twice\?'
 check "user at Mac: silent"        s7 NONE
 check "permission heading"         s8 '^### Claude needs permission$'
 check "session title line"         s8 '^My session\\$'
-check "plain-English ask"          s8 '^\*\*Run a shell command\*\*$'
-check "command folded in details"  s8 '^<details><summary>Details</summary>$'
-check "command inside details"     s8 '^npm run build$'
+check "command is the headline"    s8 '^\*\*Run: npm run build\*\*$'
+check "short command: no truncation note" s8 '^### Claude needs permission$'
+[ -z "$(grep -E 'truncated|<details>' "$T/sent.s8")" ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL short command folded"; }
+check "long command: in details"   s14 '^<details><summary>Details</summary>$'
+check "long command: truncated note" s14 '^_\(truncated, check in app\)_$'
 check "desktop app name"           s9 '^Desktop app\\$'
 check "desktop title from app"     s12 '^Desk title\\$'
 check "Remote Control reply link"  s12 '^\[Reply in Claude\]\(https://claude\.ai/code/session_01Abc\)$'

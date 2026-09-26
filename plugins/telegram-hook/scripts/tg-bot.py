@@ -205,8 +205,8 @@ def tool_ask(block):
     """(plain-English sentence of what the tool wants to do, raw detail to fold away or "")."""
     name, inp = block.get("name") or "a tool", block.get("input") or {}
     path = os.path.basename(inp.get("file_path") or inp.get("notebook_path") or "")
-    if name == "Bash":
-        return inp.get("description") or "Run a shell command", inp.get("command", "")
+    if name == "Bash":  # the command itself is the headline: a description can be wrong or misleading
+        return "Run: " + " ↵ ".join(str(inp.get("command", "")).strip().splitlines()), inp.get("command", "")
     if name in ("Edit", "MultiEdit", "NotebookEdit"):
         return f"Edit {path}", inp.get("file_path", "")
     if name == "Write":
@@ -264,13 +264,25 @@ def question_lines(questions):
     return lines
 
 
+TRUNCATED = "_(truncated, check in app)_"
+
+
 def permission_lines(block):
+    """Bold headline (for Bash the command), the Bash description below it, full detail folded away.
+    Anything cut gets a visible TRUNCATED line, so an Allow tap never approves text the user did not see."""
     ask, detail = tool_ask(block)
     lines = [f"**{md(cut(ask, 300))}**"]
+    shown = len(ask.strip()) <= 300
+    desc = (block.get("input") or {}).get("description") if block.get("name") == "Bash" else ""
+    if desc:
+        lines.append(md(cut(str(desc), 300)))
+    if block.get("name") == "Bash" and shown and "\n" not in str(detail).strip():
+        detail = ""  # the headline already shows the whole command
     if detail and detail != "{}":
         lines += ["", "<details><summary>Details</summary>", "", "```",
                   cut(detail, 800).replace("```", "'''"), "```", "</details>"]
-    return lines + [""]
+        shown = len(str(detail).strip()) <= 800
+    return lines + ([] if shown else ["", TRUNCATED]) + [""]
 
 
 # ---------- desktop presence ----------

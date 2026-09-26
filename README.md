@@ -6,7 +6,7 @@ When a Claude Code session on your Mac or Linux desktop needs you and you have b
 
 - **Questions** (`AskUserQuestion`): one button per option, multi-select toggles, or reply with free text.
 - **Plan approval** (`ExitPlanMode`): the plan as Markdown, with Allow / Deny.
-- **Permission prompts**: a plain-English line ("Run a shell command", "Edit config.ts") with the raw command folded away, and Allow / Deny. When Claude Code offers "don't ask again" rules for the call, an **Always allow** button applies exactly those rules.
+- **Permission prompts**: the command itself for shell commands ("Run: npm test", with Claude's description below it), a plain-English line for other tools ("Edit config.ts") with the raw input folded away, and Allow / Deny. Anything cut to fit is marked "(truncated, check in app)". When Claude Code offers "don't ask again" rules for the call, an **Always allow** button applies exactly those rules.
 - **A turn that ends with a question**: reply to the Telegram message and Claude continues with your answer.
 - **Reply to an earlier ping**: after any finished turn the session keeps listening (silently, up to away delay + reply window). Reply to any earlier ping of that session and Claude wakes up with your text.
 - **Photos and files**: reply with a photo or document (the caption is its text). It is downloaded and Claude gets its local path to read.
