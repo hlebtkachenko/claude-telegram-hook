@@ -46,7 +46,16 @@ def build_message(data, found):
     return "\n".join(lines + bot.reply_line()).strip()
 
 
-def wait_and_ping(session, transcript, token, text, kind):
+def wait_and_ping(session, transcript, token, text_path, kind):
+    """The message waits in a 0600 file (its path in argv, never the text), removed whatever happens."""
+    try:
+        with open(text_path, encoding="utf-8") as f:
+            text = f.read()
+    finally:
+        try:
+            os.remove(text_path)
+        except OSError:
+            pass
     time.sleep(DELAY)
     marker = os.path.join(STATE, session)
     try:
@@ -61,8 +70,8 @@ def wait_and_ping(session, transcript, token, text, kind):
     idle = bot.idle_seconds()
     if idle is not None and idle < DELAY:
         return  # the user is at the computer
-    subprocess.run(["bash", os.path.join(HOOKS, "tg-ping.sh"), text], env={**os.environ, "TG_PING_RAW": "1"},
-                   capture_output=True, timeout=30)
+    subprocess.run(["bash", os.path.join(HOOKS, "tg-ping.sh")], input=text, text=True,  # stdin: not in argv
+                   env={**os.environ, "TG_PING_RAW": "1"}, capture_output=True, timeout=30)
 
 
 def main():
@@ -84,7 +93,11 @@ def main():
     token = f"{os.getpid()}:{started}"
     with open(os.path.join(STATE, session), "w") as f:
         f.write(token)
-    subprocess.Popen([sys.executable, os.path.abspath(__file__), "--wait", session, transcript, token, text, kind],
+    text_path = bot.state(f"msg-{session}-{os.getpid()}")
+    with os.fdopen(os.open(text_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600), "w",
+                   encoding="utf-8") as f:
+        f.write(text)
+    subprocess.Popen([sys.executable, os.path.abspath(__file__), "--wait", session, transcript, token, text_path, kind],
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      start_new_session=True)
 

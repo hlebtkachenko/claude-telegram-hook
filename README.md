@@ -79,7 +79,7 @@ Change them in `/plugin` (telegram-hook, Configure options). The non-secret opti
 - Only the configured chat can answer. Buttons and replies from anyone else are dropped. While pairing, the bot only tells a private sender their own chat ID.
 - Telegram input is never executed. It only becomes an answer, an allow/deny decision, or a note to Claude.
 - An Allow tap in Telegram approves that one call, the same as the dialog. Always allow saves the rules Claude Code proposed, the same as "don't ask again". Anyone holding your phone and Telegram session can approve prompts while you are away, so keep Telegram locked.
-- The token goes to Telegram inside the request URL object or curl's stdin config, never in process arguments, logs, or notes to Claude (file download URLs contain it and never leave the poller).
+- The token goes to Telegram inside the request URL object (Python) or a curl config file descriptor (`tg-ping.sh`), never in process arguments, logs, or notes to Claude (file download URLs contain it and never leave the poller). Prompt text is not put in process arguments either: `tg-away.py` hands it to its timer in a 0600 file and to `tg-ping.sh` on stdin. (`bash tg-ping.sh "text"` from your own scripts does put the text in argv; pipe it in instead.)
 
 ## Limitations
 

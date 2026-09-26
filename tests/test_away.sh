@@ -63,5 +63,7 @@ check "desktop title from app"     s12 '^Desk title\\$'
 check "Remote Control reply link"  s12 '^\[Reply in Claude\]\(https://claude\.ai/code/session_01Abc\)$'
 check "cloud app name"             s10 '^Cloud session\\$'
 check "markdown escaped"           s11 '^>Use \\\*bold\\\* \\\[x\\\]\?$'
+# message files (0600, path in argv instead of the text) are gone after the timers
+[ -z "$(ls "$T/claude-telegram-hook"/msg-* 2>/dev/null)" ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL message files left"; }
 echo "tg-away: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

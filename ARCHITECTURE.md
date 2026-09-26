@@ -81,7 +81,7 @@ Distributed as a Claude Code plugin from this repository (`claude plugin marketp
 
 - Authorization: the `chat_id` option. The poller checks both the sender and the chat of every update. The pairing poller only replies to a private chat with that chat's own ID.
 - Telegram input is never executed. It becomes an answer, a decision, or a note.
-- Token: `userConfig` `sensitive` (system credential store). It is kept out of argv, logs, events and notes: urllib `Request` in Python, curl `-K -` in shell. File download URLs hold it and stay inside `download()`.
+- Token: `userConfig` `sensitive` (system credential store). It is kept out of argv, logs, events and notes: urllib `Request` in Python, a curl config file descriptor (`-K <(printf ...)`) in shell. Prompt text stays out of argv too (0600 file for the tg-away timer, stdin for tg-ping.sh). File download URLs hold it and stay inside `download()`.
 - State directory and files are private to the user (0700).
 
 ## 8. Development & Testing Environment
