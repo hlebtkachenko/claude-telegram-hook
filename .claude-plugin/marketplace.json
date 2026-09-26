@@ -1,0 +1,12 @@
+{
+  "name": "claude-telegram-hook",
+  "description": "Answer Claude Code prompts from Telegram while you are away from your computer",
+  "owner": { "name": "Hleb Tkachenko", "url": "https://github.com/hlebtkachenko" },
+  "plugins": [
+    {
+      "name": "telegram-hook",
+      "source": "./plugins/telegram-hook",
+      "description": "Questions, plan approvals and permission prompts on Telegram with answer buttons (macOS, Linux desktops)"
+    }
+  ]
+}

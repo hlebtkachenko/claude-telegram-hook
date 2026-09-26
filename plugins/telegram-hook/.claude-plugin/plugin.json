@@ -1,0 +1,59 @@
+{
+  "name": "telegram-hook",
+  "displayName": "Telegram Hook",
+  "version": "0.2.0",
+  "description": "macOS and Linux desktops. When you step away from your computer, Claude Code's questions, plan approvals and permission prompts come to Telegram with answer buttons; your reply (text, photo or file) goes back into the session.",
+  "author": { "name": "Hleb Tkachenko", "url": "https://github.com/hlebtkachenko" },
+  "homepage": "https://github.com/hlebtkachenko/claude-telegram-hook",
+  "repository": "https://github.com/hlebtkachenko/claude-telegram-hook",
+  "license": "MIT",
+  "keywords": ["telegram", "notifications", "permissions", "remote", "macos", "linux"],
+  "mcpServers": {
+    "telegram": {
+      "command": "python3",
+      "args": ["-B", "${CLAUDE_PLUGIN_ROOT}/scripts/tg-mcp.py"],
+      "env": {
+        "TELEGRAM_BOT_TOKEN": "${user_config.bot_token}",
+        "TELEGRAM_CHAT_ID": "${user_config.chat_id}",
+        "TG_USER_NAME": "${user_config.user_name}"
+      }
+    }
+  },
+  "userConfig": {
+    "bot_token": {
+      "type": "string",
+      "title": "Telegram bot token",
+      "description": "Token from @BotFather. Use a bot that nothing else polls (not the official Telegram channel plugin's bot).",
+      "required": true,
+      "sensitive": true
+    },
+    "chat_id": {
+      "type": "string",
+      "title": "Your Telegram chat ID",
+      "description": "Numeric ID of your private chat with the bot. Only this chat can answer. Leave empty to pair: send the bot a private message and it replies with your ID.",
+      "required": false
+    },
+    "away_delay": {
+      "type": "number",
+      "title": "Away delay (seconds)",
+      "description": "How long the computer must be idle before a prompt is sent to Telegram.",
+      "default": 600,
+      "min": 1,
+      "max": 600
+    },
+    "reply_window": {
+      "type": "number",
+      "title": "Reply window (seconds)",
+      "description": "How long a Telegram ping waits for your answer before the normal dialog takes over.",
+      "default": 600,
+      "min": 1,
+      "max": 600
+    },
+    "user_name": {
+      "type": "string",
+      "title": "Your name",
+      "description": "How Claude is told who answered, as in \"<name> replied in Telegram\".",
+      "default": "The user"
+    }
+  }
+}
