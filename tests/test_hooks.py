@@ -191,6 +191,7 @@ check("single: answer", spec.get("updatedInput", {}).get("answers") == {"Which d
 check("single: questions echoed", spec.get("updatedInput", {}).get("questions") == [Q1], out)
 kb = (msg or ("", {}))[1].get("reply_markup", {}).get("inline_keyboard", [])
 check("buttons: options + app", [r[0]["text"] for r in kb] == ["Short", "Long", "Answer in app"], kb)
+check("link previews off", (msg or ("", {}))[1].get("link_preview_options") == {"is_disabled": True}, msg)
 check("ping heading", "### Claude has a question" in (msg or ("", {}))[1].get("rich_message", {}).get("markdown", ""), msg)
 edits = [b for m, b in sent_since(n_close, "editMessageReplyMarkup")]
 reacts = [b for m, b in sent_since(n_close, "setMessageReaction")]
@@ -349,6 +350,7 @@ button(mid, "allow")
 code, out, _ = finish(p)
 rich = [b for m, b in sent_since(n, "sendRichMessage")]
 plain = [b for m, b in sent_since(n, "sendMessage")]
+check("fallback: no preview", plain and plain[0].get("link_preview_options") == {"is_disabled": True}, plain)
 check("fallback keeps reply_markup", rich and plain and plain[0].get("reply_markup") == rich[0].get("reply_markup")
       and "text" in plain[0], (rich, plain))
 check("fallback message_id used", "allow" in (out or ""), out)
@@ -369,6 +371,8 @@ end = time.time() + 8
 while time.time() < end and not sent_since(n, "sendMessage"):
     time.sleep(0.2)
 texts = [b.get("text") for m, b in sent_since(n, "sendMessage")]
+check("not listening note: no preview", all(b.get("link_preview_options") == {"is_disabled": True}
+                                           for m, b in sent_since(n, "sendMessage")), sent_since(n, "sendMessage"))
 check("not listening reply answered", "This session is not listening now; open it to answer." in texts, texts)
 check("reply to a non-ping: no expired note", len(texts) == 1, texts)
 
@@ -519,6 +523,7 @@ while time.time() < end and not sent_since(n, "sendMessage"):
 pair_sent = [b for m, b in sent_since(n, "sendMessage")]
 check("pairing: private sender gets own chat ID only", len(pair_sent) == 1 and pair_sent[0]["chat_id"] == 5555 and
       pair_sent[0]["text"].startswith("Your chat ID is 5555. Paste it into /plugin"), pair_sent)
+check("pairing reply: no preview", pair_sent and pair_sent[0].get("link_preview_options") == {"is_disabled": True}, pair_sent)
 check("pairing: configured = silent", finish(start("tg-pair.py", {"hook_event_name": "SessionStart"}), 5)[1] == "", "")
 for pid in procs:
     try:

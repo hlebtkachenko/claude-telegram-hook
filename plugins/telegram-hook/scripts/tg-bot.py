@@ -79,6 +79,7 @@ def fake(name):
     return os.environ.get(name) if TESTING else None
 CHAT = opt("CHAT_ID", "TELEGRAM_CHAT_ID")
 BODY_MAX = 3000  # ponytail: fixed cut under Telegram's 4096-char plain limit
+NO_PREVIEW = {"link_preview_options": {"is_disabled": True}}  # links in prompts never fetch a preview
 NOT_LISTENING = "This session is not listening now; open it to answer."
 DESKTOP_SESSIONS = os.environ.get("TG_AWAY_DESKTOP_SESSIONS",  # override: tests
                                   os.path.expanduser("~/Library/Application Support/Claude/claude-code-sessions"))
@@ -540,7 +541,7 @@ def api(method, params, files=None, timeout=20):
 
 def send(markdown, buttons, image=None):
     """Send a rich message with inline buttons (plain text fallback keeps the buttons); return its id."""
-    base = {"chat_id": CHAT}
+    base = {"chat_id": CHAT, **NO_PREVIEW}
     if buttons:
         base["reply_markup"] = {"inline_keyboard": [[{"text": t, "callback_data": d}] for t, d in buttons]}
     if image:
@@ -676,7 +677,7 @@ def on_message(msg, waits):
         record(f"inbox-{session}", {**reply_event(msg, text), "ping": target["message_id"], "quote": ping.get("quote", "")})
         return
     try:
-        api("sendMessage", {"chat_id": CHAT, "text": NOT_LISTENING, "reply_parameters": {"message_id": msg.get("message_id")}})
+        api("sendMessage", {"chat_id": CHAT, **NO_PREVIEW, "text": NOT_LISTENING, "reply_parameters": {"message_id": msg.get("message_id")}})
     except Exception:
         pass
 

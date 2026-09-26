@@ -41,7 +41,7 @@ def pair():
             chat = msg.get("chat") or {}
             if chat.get("type") == "private" and chat.get("id") == (msg.get("from") or {}).get("id"):
                 try:  # a private chat's ID is the sender's own user ID: nothing else is revealed
-                    bot.api("sendMessage", {"chat_id": chat["id"], "text": ANSWER.format(chat["id"])})
+                    bot.api("sendMessage", {"chat_id": chat["id"], **bot.NO_PREVIEW, "text": ANSWER.format(chat["id"])})
                     bot.log("tg-pair", "answered a private message with its chat ID")
                 except Exception:
                     pass

@@ -19,5 +19,5 @@ send() { # method, JSON body
   printf 'url = "https://api.telegram.org/bot%s/%s"\n' "$TOKEN" "$1" |
     curl -fsS -o /dev/null --max-time 15 -K - -H 'Content-Type: application/json' --data-binary "$2"
 }
-body() { python3 -c 'import json,sys; c,m,k=sys.argv[1:]; print(json.dumps({"chat_id":c, **({"rich_message":{"markdown":m}} if k=="rich" else {"text":m})}))' "$CHAT" "$MSG" "$1"; }
+body() { python3 -c 'import json,sys; c,m,k=sys.argv[1:]; print(json.dumps({"chat_id":c, "link_preview_options":{"is_disabled":True}, **({"rich_message":{"markdown":m}} if k=="rich" else {"text":m})}))' "$CHAT" "$MSG" "$1"; }
 send sendRichMessage "$(body rich)" 2>/dev/null || send sendMessage "$(body plain)" || { echo "tg-ping: send failed" >&2; exit 1; }
