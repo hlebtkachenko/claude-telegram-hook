@@ -27,20 +27,24 @@ import uuid
 
 def opt(key, env, default=""):
     """Plugin option (CLAUDE_PLUGIN_OPTION_<KEY>, set by /plugin config), else a plain env var, else default."""
-    return os.environ.get(f"CLAUDE_PLUGIN_OPTION_{key}") or os.environ.get(env) or default
+    for name in (f"CLAUDE_PLUGIN_OPTION_{key}", env):
+        value = (os.environ.get(name) or "").strip()
+        if value:
+            return value
+    return default
 
 
 def seconds(key, env, default):
     """Bounded to 1..600 so DELAY + REPLY_WINDOW + 60 stays under the 1320 s hook timeout in hooks.json."""
     try:
         return max(1, min(600, int(float(opt(key, env, default)))))
-    except ValueError:
+    except (ValueError, OverflowError):
         return int(default)
 
 
 DELAY = seconds("AWAY_DELAY", "TG_AWAY_DELAY", "600")
 REPLY_WINDOW = seconds("REPLY_WINDOW", "TG_REPLY_WINDOW", "600")
-LINGER = int(os.environ.get("TG_POLL_LINGER", "60"))
+LINGER = int(os.environ.get("TG_POLL_LINGER", "60")) if os.environ.get("TG_POLL_LINGER", "").isdigit() else 60
 MIN_IDLE = 30  # below this at hook start the user is at the Mac: normal dialog, no ping
 USER = opt("USER_NAME", "TG_USER_NAME", "The user")  # names the replier in notes Claude reads
 STATE = os.path.join(os.environ.get("TMPDIR", "/tmp"), "claude-telegram-hook")
@@ -48,6 +52,9 @@ STATE = os.path.join(os.environ.get("TMPDIR", "/tmp"), "claude-telegram-hook")
 
 def log(who, msg):
     """One line per hook decision in STATE/hooks.log (no secrets), so a missing ping can be explained."""
+    tok = bot_token()
+    if tok:
+        msg = msg.replace(tok, "<token>")  # an InvalidURL error quotes the request path
     try:
         os.makedirs(STATE, mode=0o700, exist_ok=True)
         path = os.path.join(STATE, "hooks.log")
@@ -180,7 +187,7 @@ def where():
     if entry == "claude-desktop" and re.fullmatch(r"local_[A-Za-z0-9-]{1,64}", host_id):
         return "Desktop app", desktop_session(host_id).get("title", "")
     if sys.platform != "darwin":
-        return f"VPS {socket.gethostname()}", ""
+        return f"Host {socket.gethostname()}", ""
     return ("Terminal" if entry in ("", "cli") else entry), ""
 
 

@@ -22,8 +22,8 @@ def main():
     bot.exit_on_signals()
     data = json.load(sys.stdin)
     idle = bot.on_mac()
-    if idle is None:
-        return 0
+    if idle is None or not bot.bot_token() or not bot.CHAT:
+        return 0  # not a Mac, or not configured
     transcript = data.get("transcript_path", "")
     who = f"tg-stop {data.get('session_id', '')[:8]}"
     text = (data.get("last_assistant_message") or bot.read_transcript(transcript)["text"]).strip()
@@ -39,6 +39,9 @@ def main():
             bot.log(who, "release: " + ("transcript changed" if bot.mtime(transcript) != base else "deadline"))
             return 0
         if (bot.mac_idle_seconds() or 0) >= bot.DELAY:
+            if deadline - time.time() < min(120, bot.REPLY_WINDOW):
+                bot.log(who, "release: too close to the hook timeout to ping")
+                return 0
             break
         time.sleep(2)
     cwd = data.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()

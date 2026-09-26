@@ -350,6 +350,18 @@ p = start("tg-stop.py", {"hook_event_name": "Stop", "transcript_path": tr, "last
 code, out, err = finish(p, 5)
 check("tg-stop: no question, silent", code == 0 and not sent_since(n), code)
 
+# not configured: silent, and a token in an error never reaches the log
+n0, t0 = len(calls), time.time()
+p = start("tg-ask.py", {"hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": {"command": "ls"}},
+          {"TELEGRAM_CHAT_ID": ""})
+code, out, _ = finish(p, 5)
+check("not configured: exit 0 at once", code == 0 and out == "" and time.time() - t0 < 2 and not sent_since(n0),
+      (code, out))
+subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
+                "importlib.import_module('tg-bot').log('t', 'error at /botfake-token/sendMessage')", HOOKS], env=ENV)
+logged = open(os.path.join(STATE, "hooks.log")).read()
+check("token redacted in log", "fake-token" not in logged and "/bot<token>/" in logged, logged[-200:])
+
 # plugin options win over env vars; delays are clamped to 600
 out = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
                       "b = importlib.import_module('tg-bot'); print(b.CHAT, b.DELAY, b.USER, b.bot_token())", HOOKS],

@@ -111,13 +111,16 @@ def main():
         return  # PreToolUse owns these
     who = f"tg-ask {data.get('session_id', '')[:8]} {tool}"
     kind = {"AskUserQuestion": "question", "ExitPlanMode": "plan"}.get(tool, "permission")
+    if not bot.bot_token() or not bot.CHAT:
+        bot.log(who, "skip: bot token or chat ID not configured")
+        return
     idle = bot.on_mac()
     if idle is None or idle < bot.MIN_IDLE:
         bot.log(who, f"skip: idle={idle} (not a Mac, or below {bot.MIN_IDLE}s: user at the Mac)")
         return
     bot.log(who, f"hold: idle={idle}s, ping when idle>={bot.DELAY}s")
     start = time.time()
-    deadline = start + bot.DELAY + bot.REPLY_WINDOW + 60  # settings timeout is DELAY + REPLY_WINDOW + 120
+    deadline = start + bot.DELAY + bot.REPLY_WINDOW + 60  # hooks.json timeout is DELAY + REPLY_WINDOW + 120
     session = re.sub(r"[^\w-]", "", data.get("session_id", "")) or "unknown"
     inp = data.get("tool_input") or {}
     presence = bot.Presence(idle)

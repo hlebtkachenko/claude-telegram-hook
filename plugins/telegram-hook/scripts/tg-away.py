@@ -11,7 +11,7 @@ finished turns (idle_prompt), and a permission prompt that tg-ask.py claimed is 
 Shared helpers live in tg-bot.py.
 
 The message (Markdown, sent by tg-ping.sh as a Telegram rich message) names the app
-(desktop, terminal, Conductor, cloud, VPS), the session title and project, then the
+(desktop, terminal, Conductor, cloud), the session title and project, then the
 question with its options, or the tool waiting for permission, and ends with a
 "Reply in Claude" link (claude.ai/code/<Remote Control id>) when the desktop app
 has a Remote Control id for the session.
@@ -69,8 +69,8 @@ def main():
     if len(sys.argv) == 7 and sys.argv[1] == "--wait":
         wait_and_ping(*sys.argv[2:])
         return
-    if bot.on_mac() is None:
-        return  # pings only from the Mac: cloud and VPS sessions keep their normal prompts
+    if bot.on_mac() is None or not bot.bot_token() or not bot.CHAT:
+        return  # pings only from a configured Mac: cloud and Linux sessions keep their normal prompts
     data = json.load(sys.stdin)
     kind = data.get("notification_type", "")
     transcript = data.get("transcript_path", "")

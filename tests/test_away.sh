@@ -1,7 +1,7 @@
 #!/bin/bash
 # Table test for tg-away.py + tg-ping.sh (dry run, nothing is sent). Run: bash tests/test_away.sh
 H="$(dirname "$0")/../plugins/telegram-hook/scripts/tg-away.py"
-T=$(mktemp -d); export TMPDIR=$T TG_AWAY_FAKE_PLATFORM=darwin TG_AWAY_DELAY=2 TG_PING_DRYRUN_FILE=$T/sent CLAUDE_PROJECT_DIR=/x/myproj CLAUDE_CODE_ENTRYPOINT=cli
+T=$(mktemp -d); export TELEGRAM_BOT_TOKEN=fake-token TELEGRAM_CHAT_ID=1 TMPDIR=$T TG_AWAY_FAKE_PLATFORM=darwin TG_AWAY_DELAY=2 TG_PING_DRYRUN_FILE=$T/sent CLAUDE_PROJECT_DIR=/x/myproj CLAUDE_CODE_ENTRYPOINT=cli
 unset CLAUDE_CODE_HOST_SESSION_ID CLAUDE_CODE_REMOTE CONDUCTOR_WORKSPACE_NAME CLAUDE_PLUGIN_OPTION_AWAY_DELAY
 pass=0; fail=0
 tr_text() { jq -nc --arg t "$1" '{type:"assistant",message:{content:[{type:"text",text:$t}]}}' >"$T/$2.jsonl"; }
