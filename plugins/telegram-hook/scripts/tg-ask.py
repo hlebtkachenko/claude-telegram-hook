@@ -136,8 +136,11 @@ def main():
             bot.unclaim(session)  # the user is at the computer: tg-away.py may ping later if they leave
             bot.log(who, "release: desktop input or deadline while holding")
             return
-        # "Always allow" echoes the permission_suggestions Claude Code passed, as the dialog's "don't ask again" does
-        suggestions = (data.get("permission_suggestions") or None) if event == "PermissionRequest" else None
+        # "Always allow" echoes the addRules entries of the permission_suggestions Claude Code passed, as the
+        # dialog's "don't ask again" does; setMode and other entries are dropped so a tap never changes the mode
+        suggestions = [s for s in data.get("permission_suggestions") or []
+                       if isinstance(s, dict) and s.get("type") == "addRules"] if event == "PermissionRequest" else []
+        suggestions = suggestions or None
         mid = bot.send(message(data, kind), buttons(kind, inp.get("questions") or [], bool(suggestions)))
         bot.log(who, f"pinged: message {mid}")
         quote = ((inp.get("questions") or [{}])[0].get("question", "") if kind == "question" else

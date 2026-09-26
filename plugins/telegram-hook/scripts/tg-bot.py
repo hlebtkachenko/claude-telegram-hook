@@ -46,7 +46,7 @@ REPLY_WINDOW = seconds("REPLY_WINDOW", "TG_REPLY_WINDOW", "600")
 LINGER = int(os.environ.get("TG_POLL_LINGER", "60")) if os.environ.get("TG_POLL_LINGER", "").isdigit() else 60
 MIN_IDLE = 30  # below this at hook start the user is at the Mac: normal dialog, no ping
 USER = opt("USER_NAME", "TG_USER_NAME", "The user")  # names the replier in notes Claude reads
-STATE = os.path.join(os.environ.get("TMPDIR", "/tmp"), "claude-telegram-hook")
+STATE = os.path.join(os.environ.get("TMPDIR") or os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "claude-telegram-hook")
 
 
 def log(who, msg):
@@ -329,6 +329,8 @@ def mtime(path):
 def state(*parts):
     for sub in ("", "waits", "answers", "claims", "files", "inbox", "failures"):
         os.makedirs(os.path.join(STATE, sub), mode=0o700, exist_ok=True)
+    if os.lstat(STATE).st_uid != os.getuid():
+        raise PermissionError(f"{STATE} belongs to another user")  # shared /tmp: never use a planted directory
     os.chmod(STATE, 0o700)
     return os.path.join(STATE, *parts)
 

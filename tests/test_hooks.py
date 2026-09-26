@@ -299,11 +299,12 @@ check("permission buttons", [r[0]["text"] for r in msg[1]["reply_markup"]["inlin
 SUGG = [{"type": "addRules", "rules": [{"toolName": "Bash", "ruleContent": "make deploy"}], "behavior": "allow",
          "destination": "localSettings"}]
 n = len(calls)
-p = start("tg-ask.py", {**perm, "permission_suggestions": SUGG})
+p = start("tg-ask.py", {**perm, "permission_suggestions": SUGG + [{"type": "setMode", "mode": "acceptEdits",
+                                                                  "destination": "session"}]})
 mid, msg = ping_id(n)
 button(mid, "always")
 code, out, _ = finish(p)
-check("always allow: suggestions echoed", json.loads(out or "{}").get("hookSpecificOutput", {}).get("decision") ==
+check("always allow: addRules echoed, setMode dropped", json.loads(out or "{}").get("hookSpecificOutput", {}).get("decision") ==
       {"behavior": "allow", "updatedPermissions": SUGG}, out)
 check("always allow button", [r[0]["text"] for r in msg[1]["reply_markup"]["inline_keyboard"]] ==
       ["Allow", "Always allow", "Deny", "Answer in app"], msg)
