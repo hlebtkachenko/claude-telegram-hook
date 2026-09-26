@@ -24,23 +24,24 @@ It works with the sessions you already run (terminal, the Claude desktop app, Co
 
 1. **Create a bot.** In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot`, and copy the token.
 
-2. **Find your chat ID.** Send any message to your new bot, then run this and paste the token when it waits for input (the token is not echoed):
+2. **Find your chat ID.** Send any message to your new bot in a private chat, then run this and paste the token when it waits for input. The token is not echoed and stays out of the process list. Your chat ID is the positive number it prints; group chats are not supported.
 
    ```bash
-   read -rs TOKEN && curl -s "https://api.telegram.org/bot$TOKEN/getUpdates" | python3 -c 'import json,sys; print({u["message"]["chat"]["id"] for u in json.load(sys.stdin)["result"] if "message" in u})'
+   read -rs TOKEN && printf 'url = "https://api.telegram.org/bot%s/getUpdates"\n' "$TOKEN" | curl -s -K - | python3 -c 'import json,sys; print({u["message"]["chat"]["id"] for u in json.load(sys.stdin)["result"] if "message" in u})'; unset TOKEN
    ```
 
 3. **Install the plugin.**
 
-   ```bash
-   claude plugin marketplace add hlebtkachenko/claude-telegram-hook
+   In a Claude Code session, run:
+
+   ```
+   /plugin marketplace add hlebtkachenko/claude-telegram-hook
+   /plugin install telegram-hook@claude-telegram-hook
    ```
 
-   ```bash
-   claude plugin install telegram-hook@claude-telegram-hook
-   ```
+   Enter the bot token and chat ID when asked. If you were not asked, open `/plugin`, pick telegram-hook under Installed, and choose Configure options. The token is stored in the system's secure credential store, not in `settings.json`. Start a new session afterwards.
 
-   Claude Code asks for the bot token and chat ID when the plugin is enabled. The token is stored in the system's secure credential store, not in `settings.json`. Start a new session afterwards.
+   To update later: `/plugin marketplace update claude-telegram-hook`, then restart the session.
 
 ## Options
 
@@ -52,7 +53,7 @@ It works with the sessions you already run (terminal, the Claude desktop app, Co
 | `reply_window` | 600 | Seconds a Telegram ping waits for your answer (1 to 600). |
 | `user_name` | `The user` | Name Claude sees in "`<name>` replied in Telegram". |
 
-Change them with `/config` in a session. Outside the plugin (for example when calling `tg-ping.sh` from your own scripts), the same values can come from `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TG_AWAY_DELAY`, `TG_REPLY_WINDOW` and `TG_USER_NAME`.
+Change them in `/plugin` (telegram-hook, Configure options). The non-secret options also appear in `/config`. Outside the plugin (for example when calling `tg-ping.sh` from your own scripts), the same values can come from `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TG_AWAY_DELAY`, `TG_REPLY_WINDOW` and `TG_USER_NAME`.
 
 ## How it answers
 
@@ -62,11 +63,12 @@ Change them with `/config` in a session. Outside the plugin (for example when ca
 | Text reply to a question | Your text as the "Other" answer. |
 | Allow / Deny | The permission decision. |
 | Text reply to a permission or plan | A denial carrying your text, so Claude reads your instruction. |
-| Text reply to a turn that ended with a question | Claude wakes up with "`<name>` replied in Telegram: ...". |
+| Text reply to a turn that ended with a question | Claude wakes up with "`<name>` replied in Telegram (HH:MM) to your message ...", followed by your text. |
 | "Answer in app", Mac input, or no answer | Nothing: the normal dialog stays open. |
 
 ## Security
 
+- What goes to Telegram: question and option text, plans, tool commands and file paths (commands cut at 800 characters), the project and branch name, the session title, Claude's last message, and the newest image of the turn. Telegram bot chats are not end-to-end encrypted. Don't use this plugin where that content must not leave the machine.
 - Only the configured chat can answer. Buttons and replies from anyone else are dropped.
 - Telegram input is never executed. It only becomes an answer, an allow/deny decision, or a note to Claude.
 - An Allow tap in Telegram approves that one call, the same as the dialog. Anyone holding your phone and Telegram session can approve prompts while you are away, so keep Telegram locked.
