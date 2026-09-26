@@ -525,6 +525,32 @@ for pid in procs:
     except (OSError, ValueError):
         pass
 
+# MCP server: newline-delimited JSON-RPC, one notify tool
+def mcp(lines, env=None):
+    p = subprocess.run([sys.executable, os.path.join(HOOKS, "tg-mcp.py")], input="".join(json.dumps(l) + "\n" for l in lines),
+                       env={**ENV, **(env or {})}, capture_output=True, text=True, timeout=20)
+    return [json.loads(l) for l in p.stdout.splitlines()]
+
+
+n = len(calls)
+res = mcp([{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-11-25"}},
+           {"jsonrpc": "2.0", "method": "notifications/initialized"},
+           {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+           {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "notify", "arguments": {"text": "Build *done*"}}},
+           {"jsonrpc": "2.0", "id": 4, "method": "ping"},
+           {"jsonrpc": "2.0", "id": 5, "method": "resources/list"}])
+check("mcp: one reply per request", [r.get("id") for r in res] == [1, 2, 3, 4, 5], res)
+check("mcp: protocolVersion echoed", res and res[0]["result"]["protocolVersion"] == "2025-11-25", res)
+check("mcp: notify listed", len(res) > 1 and [t["name"] for t in res[1]["result"]["tools"]] == ["notify"]
+      and "never for progress" in res[1]["result"]["tools"][0]["description"].lower(), res)
+check("mcp: notify sent", len(res) > 2 and res[2]["result"]["content"][0]["text"] == "sent"
+      and [b["rich_message"]["markdown"] for m, b in sent_since(n, "sendRichMessage")] == ["Build *done*"], res)
+check("mcp: ping + unknown method", len(res) > 4 and res[3]["result"] == {} and res[4]["error"]["code"] == -32601, res)
+res = mcp([{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "notify", "arguments": {"text": "x"}}}],
+          {"TELEGRAM_CHAT_ID": "${user_config.chat_id}"})
+check("mcp: unset option -> error text", res and res[0]["result"]["isError"]
+      and res[0]["result"]["content"][0]["text"].startswith("error: Telegram bot token or chat ID not configured"), res)
+
 # plugin options win over env vars; delays are clamped to 600
 out = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
                       "b = importlib.import_module('tg-bot'); print(b.CHAT, b.DELAY, b.USER, b.bot_token())", HOOKS],

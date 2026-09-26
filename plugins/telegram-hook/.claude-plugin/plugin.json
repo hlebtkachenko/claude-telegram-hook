@@ -8,6 +8,17 @@
   "repository": "https://github.com/hlebtkachenko/claude-telegram-hook",
   "license": "MIT",
   "keywords": ["telegram", "notifications", "permissions", "remote", "macos"],
+  "mcpServers": {
+    "telegram": {
+      "command": "python3",
+      "args": ["-B", "${CLAUDE_PLUGIN_ROOT}/scripts/tg-mcp.py"],
+      "env": {
+        "TELEGRAM_BOT_TOKEN": "${user_config.bot_token}",
+        "TELEGRAM_CHAT_ID": "${user_config.chat_id}",
+        "TG_USER_NAME": "${user_config.user_name}"
+      }
+    }
+  },
   "userConfig": {
     "bot_token": {
       "type": "string",
