@@ -38,9 +38,11 @@ def notify(text):
 
 
 def handle(req):
-    method, params = req.get("method"), req.get("params") or {}
+    method, params = req.get("method"), req.get("params")
+    params = params if isinstance(params, dict) else {}
     if method == "initialize":
-        return {"protocolVersion": params.get("protocolVersion") or "2025-06-18", "capabilities": {"tools": {}},
+        version = params.get("protocolVersion")
+        return {"protocolVersion": version if isinstance(version, str) and version else "2025-06-18", "capabilities": {"tools": {}},
                 "serverInfo": {"name": "telegram-hook", "version": "0.2.0"}}
     if method == "ping":
         return {}
@@ -49,7 +51,8 @@ def handle(req):
     if method == "tools/call":
         if params.get("name") != "notify":
             raise LookupError(f"unknown tool {params.get('name')}")
-        text = (params.get("arguments") or {}).get("text")
+        args = params.get("arguments")
+        text = args.get("text") if isinstance(args, dict) else None
         result = notify(text) if isinstance(text, str) else "error: text must be a string"
         return {"content": [{"type": "text", "text": result}], "isError": result != "sent"}
     raise NotImplementedError(method)
@@ -69,6 +72,9 @@ def main():
             out = {"jsonrpc": "2.0", "id": req["id"], "error": {"code": -32601, "message": "Method not found"}}
         except LookupError as e:
             out = {"jsonrpc": "2.0", "id": req["id"], "error": {"code": -32602, "message": str(e)}}
+        except Exception as e:  # never die, never echo exception text (it may quote a request URL)
+            bot.log("tg-mcp", f"internal error: {type(e).__name__}")
+            out = {"jsonrpc": "2.0", "id": req["id"], "error": {"code": -32603, "message": "Internal error"}}
         sys.stdout.write(json.dumps(out) + "\n")
         sys.stdout.flush()
 

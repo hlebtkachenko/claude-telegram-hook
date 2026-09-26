@@ -593,6 +593,15 @@ for base, want in (("https://evil.example", "https://api.telegram.org False"),
                          capture_output=True, text=True).stdout.strip()
     check(f"api base {base}", got == want, got)
 
+res = mcp([{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": ["notify"]},
+           {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "notify", "arguments": "text"}},
+           {"jsonrpc": "2.0", "id": 3, "method": "initialize", "params": {"protocolVersion": 7}},
+           {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "notify", "arguments": {"text": 5}}},
+           "not an object", {"jsonrpc": "2.0", "id": 5, "method": "ping"}])
+check("mcp: malformed params answered, server keeps running", [r.get("id") for r in res] == [1, 2, 3, 4, 5]
+      and res[0].get("error", {}).get("code") == -32602 and res[1]["result"]["isError"]
+      and res[2]["result"]["protocolVersion"] == "2025-06-18" and res[3]["result"]["isError"] and res[4]["result"] == {}, res)
+
 # plugin options win over env vars; delays are clamped to 600
 out = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
                       "b = importlib.import_module('tg-bot'); print(b.CHAT, b.DELAY, b.USER, b.bot_token())", HOOKS],
