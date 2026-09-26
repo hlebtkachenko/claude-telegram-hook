@@ -61,7 +61,7 @@ def main():
             for e in evts:
                 if e.get("data") == "app":
                     return "app"
-                if (e.get("text") or "").strip():
+                if bot.reply_text(e):
                     return e
             return None
 
@@ -74,7 +74,7 @@ def main():
         return 0
     when = time.strftime("%H:%M", time.localtime(reply.get("date") or time.time()))
     quote = bot.cut(" ".join(text.split()), 120)
-    sys.stderr.write(f"{bot.USER} replied in Telegram ({when}) to your message \"{quote}\":\n{reply['text'].strip()}\n")
+    sys.stderr.write(f"{bot.USER} replied in Telegram ({when}) to your message \"{quote}\":\n{bot.reply_text(reply)}\n")
     return 2
 
 

@@ -66,7 +66,7 @@ def resolve(event, kind, inp, evts, suggestions=None):
     questions = inp.get("questions") or []
     answers = {}
     for n, e in enumerate(evts):
-        data, text = e.get("data", ""), (e.get("text") or "").strip()
+        data, text = e.get("data", ""), bot.reply_text(e)
         if data == "app":
             return "app"
         if kind != "question":

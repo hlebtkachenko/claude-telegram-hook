@@ -4,6 +4,7 @@
 Never calls the real API or reads the real token: TG_API_BASE points at a local server and the
 token is a fake env value.
 """
+import glob
 import json
 import os
 import signal
@@ -40,6 +41,10 @@ class Fake(BaseHTTPRequestHandler):
                     break
                 time.sleep(0.05)
             result = pending
+        elif method == "getFile":
+            with lock:
+                calls.append((method, body))
+            result = {"file_id": body.get("file_id"), "file_path": "photos/file_7.jpg", "file_size": 8}
         else:
             with lock:
                 calls.append((method, body))
@@ -57,6 +62,15 @@ class Fake(BaseHTTPRequestHandler):
             self.wfile.write(out)
         except (BrokenPipeError, ConnectionResetError):
             pass  # a poller the test terminated mid-request
+
+
+    def do_GET(self):
+        with lock:
+            calls.append(("GET", {"path": self.path}))
+        ok = self.path == "/file/botfake-token/photos/file_7.jpg"
+        self.send_response(200 if ok else 404)
+        self.end_headers()
+        self.wfile.write(b"JPEGDATA" if ok else b"")
 
 
 server = ThreadingHTTPServer(("127.0.0.1", 0), Fake)
@@ -101,6 +115,15 @@ def reply(mid, text, chat=CHAT):
     push({"message": {"message_id": 9000 + cfg["update_id"], "from": {"id": chat}, "chat": {"id": chat},
                       "date": int(time.time()), "text": text,
                       "reply_to_message": {"message_id": mid, "from": {"is_bot": True}}}})
+
+
+def reply_photo(mid, caption=None, chat=CHAT):
+    msg = {"message_id": 9000 + cfg["update_id"], "from": {"id": chat}, "chat": {"id": chat}, "date": int(time.time()),
+           "photo": [{"file_id": "small", "file_size": 2}, {"file_id": "big", "file_size": 8}],
+           "reply_to_message": {"message_id": mid, "from": {"is_bot": True}}}
+    if caption:
+        msg["caption"] = caption
+    push({"message": msg})
 
 
 def sent_since(n, method=None):
@@ -288,6 +311,23 @@ p = start("tg-ask.py", {**perm, "tool_name": "AskUserQuestion"})
 code, out, _ = finish(p, 5)
 check("PermissionRequest ignores AskUserQuestion", code == 0 and out == "", out)
 
+# photo reply: downloaded (0600, largest size), path in the denial; photo-only reply answers a question
+n = len(calls)
+p = start("tg-ask.py", {**perm, "session_id": "sph"})
+mid, msg = ping_id(n)
+reply_photo(mid, "use this layout")
+code, out, _ = finish(p)
+deny = json.loads(out or "{}").get("hookSpecificOutput", {}).get("decision", {}).get("message", "")
+fpath = deny.split("Attached: ")[-1]
+check("photo: caption + Attached path", deny.startswith("Alex replied in Telegram: use this layout\nAttached: /")
+      and fpath.endswith("-file_7.jpg"), deny)
+check("photo: file saved 0600", os.path.exists(fpath) and open(fpath, "rb").read() == b"JPEGDATA"
+      and os.stat(fpath).st_mode & 0o777 == 0o600, fpath)
+check("photo: largest size fetched", [b.get("file_id") for m, b in sent_since(n, "getFile")] == ["big"], sent_since(n, "getFile"))
+code, out, msg = ask([Q1], lambda m: reply_photo(m))
+ans = out.get("hookSpecificOutput", {}).get("updatedInput", {}).get("answers") if isinstance(out, dict) else None
+check("photo-only reply as Other", ans and ans["Which delay?"].startswith("Attached: /"), out)
+
 # plan: body is the plan, Deny -> PreToolUse deny with reason
 n = len(calls)
 plan = {"plan": "# Plan\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [ ] step", "planFilePath": "/x/plan.md"}
@@ -406,6 +446,9 @@ subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0,
                 "importlib.import_module('tg-bot').log('t', 'error at /botfake-token/sendMessage')", HOOKS], env=ENV)
 logged = open(os.path.join(STATE, "hooks.log")).read()
 check("token redacted in log", "fake-token" not in logged and "/bot<token>/" in logged, logged[-200:])
+leaks = [f for f in glob.glob(os.path.join(STATE, "**", "*"), recursive=True)
+         if os.path.isfile(f) and "fake-token" in (f + open(f, "rb").read().decode("utf-8", "replace"))]
+check("token in no state file", not leaks, leaks)
 
 # plugin options win over env vars; delays are clamped to 600
 out = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "

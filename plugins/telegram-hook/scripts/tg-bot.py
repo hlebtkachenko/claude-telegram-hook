@@ -327,7 +327,7 @@ def mtime(path):
 # ---------- state: waits, answers, claims ----------
 
 def state(*parts):
-    for sub in ("", "waits", "answers", "claims"):
+    for sub in ("", "waits", "answers", "claims", "files", "inbox"):
         os.makedirs(os.path.join(STATE, sub), mode=0o700, exist_ok=True)
     os.chmod(STATE, 0o700)
     return os.path.join(STATE, *parts)
@@ -436,6 +436,12 @@ def unclaim(session):
 
 def claimed(session, at):
     return (read_json(state("claims", session), {}) or {}).get("until", 0) >= at
+
+
+def reply_text(event):
+    """A reply's text, plus "Attached: <path>" for its downloaded photo or file ("" when neither)."""
+    parts = [(event.get("text") or "").strip()] + ([f"Attached: {event['file']}"] if event.get("file") else [])
+    return "\n".join(p for p in parts if p)
 
 
 def selected(question, qi, evts):
@@ -563,15 +569,51 @@ def on_callback(query, waits):
     toast(query.get("id"), "Answer in the app" if data == "app" else "Sent to Claude")
 
 
+FILE_MAX = 20 * 1024 * 1024  # Bot API getFile download limit
+
+
+def download(msg):
+    """Save a reply's photo (largest size) or document as STATE/files/<message_id>-<name>, mode 0600.
+    Its path, or "" (too big, or failed). The file URL holds the token: it never leaves this function."""
+    doc = msg.get("document") or (msg.get("photo") or [{}])[-1]
+    if (doc.get("file_size") or 0) > FILE_MAX:
+        log("poller", f"file skipped: {doc.get('file_size')} bytes, over the 20 MB Bot API limit")
+        return ""
+    try:
+        remote = api("getFile", {"file_id": doc.get("file_id", "")})["file_path"]
+        name = re.sub(r"[^\w.-]", "_", os.path.basename(doc.get("file_name") or remote))[-100:] or "file"
+        with urllib.request.urlopen(urllib.request.Request(f"{API}/file/bot{bot_token()}/{remote}"), timeout=60) as resp:
+            data = resp.read(FILE_MAX + 1)
+        if len(data) > FILE_MAX:
+            log("poller", "file skipped: over the 20 MB Bot API limit")
+            return ""
+        path = state("files", f"{msg.get('message_id')}-{name}")
+        with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as f:
+            f.write(data)
+        return path
+    except Exception as e:
+        log("poller", f"file download failed: {type(e).__name__}: {e}")  # log() redacts the token
+        return ""
+
+
+def reply_event(msg, text):
+    event = {"text": text, "date": msg.get("date")}
+    if msg.get("photo") or msg.get("document"):
+        event["file"] = download(msg)
+    return event
+
+
 def on_message(msg, waits):
-    """A reply to an open ping is its answer (a reply always comes after the ping, so no clock check)."""
+    """A reply to an open ping is its answer (a reply always comes after the ping, so no clock check).
+    Text, or a photo or document (its caption counts as the text)."""
     if str((msg.get("from") or {}).get("id")) != CHAT or str((msg.get("chat") or {}).get("id")) != CHAT:
         return
     target = msg.get("reply_to_message") or {}
-    if not target or not msg.get("text"):
+    text = (msg.get("text") or msg.get("caption") or "").strip()
+    if not target or not (text or msg.get("photo") or msg.get("document")):
         return  # not a reply
     if target.get("message_id") in waits:
-        record(target["message_id"], {"text": msg["text"], "date": msg.get("date")})
+        record(target["message_id"], reply_event(msg, text))
     elif was_pinged(target.get("message_id")):  # a closed ping; replies to alerts or manual pings: silence
         try:
             api("sendMessage", {"chat_id": CHAT, "text": EXPIRED,
