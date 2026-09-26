@@ -327,7 +327,7 @@ def mtime(path):
 # ---------- state: waits, answers, claims ----------
 
 def state(*parts):
-    for sub in ("", "waits", "answers", "claims", "files", "inbox"):
+    for sub in ("", "waits", "answers", "claims", "files", "inbox", "failures"):
         os.makedirs(os.path.join(STATE, sub), mode=0o700, exist_ok=True)
     os.chmod(STATE, 0o700)
     return os.path.join(STATE, *parts)
@@ -524,7 +524,9 @@ def api(method, params, files=None, timeout=20):
 
 def send(markdown, buttons, image=None):
     """Send a rich message with inline buttons (plain text fallback keeps the buttons); return its id."""
-    base = {"chat_id": CHAT, "reply_markup": {"inline_keyboard": [[{"text": t, "callback_data": d}] for t, d in buttons]}}
+    base = {"chat_id": CHAT}
+    if buttons:
+        base["reply_markup"] = {"inline_keyboard": [[{"text": t, "callback_data": d}] for t, d in buttons]}
     if image:
         try:
             rich = {"markdown": markdown + "\n\n![](tg://photo?id=img1)",

@@ -46,6 +46,17 @@
           }
         ]
       }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/tg-failure.py\"",
+            "timeout": 25
+          }
+        ]
+      }
     ]
   }
 }

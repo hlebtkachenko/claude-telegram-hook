@@ -458,6 +458,27 @@ check("inbox: thumbs-up on the old ping", any(b.get("message_id") == 88888 for m
       sent_since(n))
 check("inbox: no message sent", not sent_since(n, "sendRichMessage") and not sent_since(n, "sendMessage"), sent_since(n))
 
+# StopFailure: blockers always (once per error type per hour), others only when away (once per session per hour)
+def failure(payload, env=None):
+    n = len(calls)
+    p = start("tg-failure.py", {"hook_event_name": "StopFailure", "session_id": "sf1", **payload}, env)
+    finish(p, 10)
+    return [b for m, b in sent_since(n) if m in ("sendRichMessage", "sendMessage")]
+
+
+set_idle(999)
+got = failure({"error": "billing_error", "error_details": "Credit balance too low"})
+check("failure: blocker pings, no buttons", len(got) == 1 and "billing\\_error" in got[0]["rich_message"]["markdown"]
+      and "Needs you" in got[0]["rich_message"]["markdown"] and "reply_markup" not in got[0], got)
+check("failure: blocker once per hour", not failure({"error": "billing_error"}, {"TG_AWAY_FAKE_PLATFORM": "win32"}), "")
+check("failure: subagent skipped", not failure({"error": "model_not_found", "agent_id": "a1"}), "")
+check("failure: other error, no idle reader: skip", not failure({"error": "rate_limit"}, {"TG_AWAY_FAKE_PLATFORM": "win32"}), "")
+set_idle(0)
+check("failure: other error at the computer: skip", not failure({"error": "rate_limit"}), "")
+set_idle(999)
+check("failure: other error when away pings", len(failure({"error": "rate_limit"})) == 1, "")
+check("failure: once per session per hour", not failure({"error": "overloaded"}), "")
+
 # not configured: silent, and a token in an error never reaches the log
 n0, t0 = len(calls), time.time()
 p = start("tg-ask.py", {"hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": {"command": "ls"}},
