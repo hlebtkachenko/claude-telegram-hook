@@ -65,6 +65,7 @@ Files only, under `claude-telegram-hook/` in `$TMPDIR`, else `$XDG_RUNTIME_DIR`,
 - `failures/`: tg-failure.py's once-per-hour markers.
 - `claims/<session>`: tg-ask.py owns this session's prompt until a time, so tg-away.py stays quiet.
 - `<session>`: tg-away.py's newest timer token for the session.
+- `bot_token` (0600): the token as the MCP server received it; hooks read it because Claude Code passes secret options only to MCP servers.
 - `offset`, `pinged.json`, `poller.lock`, `pair.lock`, `hooks.log`: poller offset, last 500 pings (message ID to session and quote), locks, decision log.
 
 ## 5. External Integrations / APIs

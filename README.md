@@ -43,7 +43,7 @@ It works with the sessions you already run (terminal, the Claude desktop app, Co
    /plugin install telegram-hook@claude-telegram-hook
    ```
 
-   Enter the bot token and chat ID when asked. No chat ID yet? Leave it empty and start a session: for 10 minutes the bot answers any private message with "Your chat ID is ...". Paste that ID into the chat_id option and start a new session. Until then nothing else is sent. If you were not asked, open `/plugin`, pick telegram-hook under Installed, and choose Configure options. The token is stored in the system's secure credential store, not in `settings.json`. Start a new session afterwards.
+   Enter the bot token and chat ID when asked. No chat ID yet? Leave it empty and start a session: for 10 minutes the bot answers any private message with "Your chat ID is ...". Paste that ID into the chat_id option and start a new session. Until then nothing else is sent. If you were not asked, open `/plugin`, pick telegram-hook under Installed, and choose Configure options. The token is stored in the system's secure credential store, not in `settings.json`. Start a new session afterwards: Claude Code gives the secret token only to the plugin's MCP server, which hands it to the hooks through a 0600 file in the private state folder, so pings start from the first session after setup.
 
    To update later: `/plugin marketplace update claude-telegram-hook`, then restart the session.
 
@@ -79,6 +79,7 @@ Change them in `/plugin` (telegram-hook, Configure options). The non-secret opti
 - Only the configured chat can answer. Buttons and replies from anyone else are dropped. While pairing, the bot only tells a private sender their own chat ID.
 - Telegram input is never executed. It only becomes an answer, an allow/deny decision, or a note to Claude.
 - An Allow tap in Telegram approves that one call, the same as the dialog. Always allow saves the rules Claude Code proposed, the same as "don't ask again". Anyone holding your phone and Telegram session can approve prompts while you are away, so keep Telegram locked.
+- Claude Code does not pass secret options to plugin hooks, only to MCP servers. The plugin's MCP server therefore saves the token as `bot_token` (mode 0600) in the per-user state folder, where the hooks read it. It is rewritten at every session start; remove it by deleting that file.
 - The token goes to Telegram inside the request URL object (Python) or a curl config file descriptor (`tg-ping.sh`), never in process arguments, logs, or notes to Claude (file download URLs contain it and never leave the poller). Prompt text is not put in process arguments either: `tg-away.py` hands it to its timer in a 0600 file and to `tg-ping.sh` on stdin. (`bash tg-ping.sh "text"` from your own scripts does put the text in argv; pipe it in instead.)
 
 ## Limitations
