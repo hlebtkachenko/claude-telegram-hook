@@ -111,6 +111,9 @@ def listen(transcript, session, who):
 if __name__ == "__main__":
     try:
         code = main()
+    except bot.Interrupted as e:
+        bot.log("tg-stop", f"stopped ({e}): the session moved on or closed")
+        code = 0
     except Exception as e:
         bot.log("tg-stop", f"error: {type(e).__name__}: {e}")
         code = 0  # never disturb the session because the pinger failed

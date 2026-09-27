@@ -522,7 +522,26 @@ def selected(question, qi, evts):
 # ---------- Telegram ----------
 
 def bot_token():
-    return opt("BOT_TOKEN", "TELEGRAM_BOT_TOKEN")
+    """Option or env var, else the copy the plugin's MCP server saved: Claude Code passes the secret bot_token
+    option to MCP servers but not to hooks."""
+    tok = opt("BOT_TOKEN", "TELEGRAM_BOT_TOKEN")
+    if tok:
+        return tok
+    try:
+        with os.fdopen(os.open(state("bot_token"), os.O_RDONLY | os.O_NOFOLLOW)) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def save_token(tok):
+    """Keep the token for hooks: 0600 file in the per-user state dir, replaced atomically, links never followed."""
+    path = state("bot_token")
+    tmp = f"{path}.{os.getpid()}.tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(tok)
+    os.replace(tmp, path)
 
 
 def multipart(params, files):
