@@ -13,6 +13,11 @@ for _name in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TG_USER_NAME"):
     if os.environ.get(_name, "").startswith("${"):
         os.environ.pop(_name)  # an unset option may arrive unsubstituted; CHAT is read at import below
 bot = importlib.import_module("tg-bot")
+if os.environ.get("TELEGRAM_BOT_TOKEN", "").strip():
+    try:
+        bot.save_token(os.environ["TELEGRAM_BOT_TOKEN"].strip())  # hand the secret option over to the hooks
+    except OSError as e:
+        bot.log("tg-mcp", f"could not save the token for hooks: {type(e).__name__}")
 
 TOOL = {
     "name": "notify",
@@ -43,7 +48,7 @@ def handle(req):
     if method == "initialize":
         version = params.get("protocolVersion")
         return {"protocolVersion": version if isinstance(version, str) and version else "2025-06-18", "capabilities": {"tools": {}},
-                "serverInfo": {"name": "telegram-hook", "version": "0.2.0"}}
+                "serverInfo": {"name": "telegram-hook", "version": "0.2.1"}}
     if method == "ping":
         return {}
     if method == "tools/list":

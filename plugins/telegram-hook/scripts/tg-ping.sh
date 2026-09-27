@@ -7,16 +7,16 @@
 # Telegram rejects it, the same text goes out as a plain message. Link previews are off.
 # TG_PING_RAW=1: text is a complete message (tg-away.py builds its own header); otherwise
 # the project name is prepended.
-# Credentials: plugin options (CLAUDE_PLUGIN_OPTION_BOT_TOKEN / _CHAT_ID, set in hook processes),
-# else TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID from the environment.
+# Credentials: CLAUDE_PLUGIN_OPTION_BOT_TOKEN / _CHAT_ID, else TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID.
+# Claude Code does not pass the secret bot token to hooks, so tg-away.py sets TELEGRAM_BOT_TOKEN for this script.
 # Test mode: TG_PING_DRYRUN_FILE=<file> appends the message and a "===" line there instead of sending.
 if [ $# -gt 0 ]; then TEXT="$1"; else TEXT="$(cat)"; fi
 [ -n "$TEXT" ] || { echo "usage: tg-ping.sh \"text\"  or  text on stdin" >&2; exit 2; }
 if [ -n "${TG_PING_RAW:-}" ]; then MSG="$TEXT"; else MSG="**$(basename "${CLAUDE_PROJECT_DIR:-$PWD}")** · $TEXT"; fi
-if [ -n "${TG_PING_DRYRUN_FILE:-}" ]; then printf '%s\n===\n' "$MSG" >>"$TG_PING_DRYRUN_FILE"; exit 0; fi
 TOKEN="${CLAUDE_PLUGIN_OPTION_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
 CHAT="${CLAUDE_PLUGIN_OPTION_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
 [ -n "$TOKEN" ] && [ -n "$CHAT" ] || { echo "tg-ping: bot token or chat id missing" >&2; exit 1; }
+if [ -n "${TG_PING_DRYRUN_FILE:-}" ]; then printf '%s\n===\n' "$MSG" >>"$TG_PING_DRYRUN_FILE"; exit 0; fi
 # URL (with token) goes to curl as a config file descriptor (printf is a builtin), the JSON body on stdin:
 # neither the token nor the message is ever in a process's argv.
 send() { # method; JSON body on stdin

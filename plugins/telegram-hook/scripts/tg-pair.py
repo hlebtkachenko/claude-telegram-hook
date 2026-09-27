@@ -51,7 +51,13 @@ def pair():
 def main():
     if sys.argv[1:] == ["--pair"]:
         return pair()
-    if not bot.bot_token() or bot.CHAT:
+    if bot.CHAT:
+        return
+    for _ in range(10):  # first session: the MCP server may still be saving the token
+        if bot.bot_token():
+            break
+        time.sleep(0.5)
+    else:
         return
     if not bot.poller_running("pair.lock"):
         subprocess.Popen([sys.executable, os.path.abspath(__file__), "--pair"], stdin=subprocess.DEVNULL,

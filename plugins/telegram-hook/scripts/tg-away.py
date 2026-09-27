@@ -71,7 +71,8 @@ def wait_and_ping(session, transcript, token, text_path, kind):
     if idle is not None and idle < DELAY:
         return  # the user is at the computer
     subprocess.run(["bash", os.path.join(HOOKS, "tg-ping.sh")], input=text, text=True,  # stdin: not in argv
-                   env={**os.environ, "TG_PING_RAW": "1"}, capture_output=True, timeout=30)
+                   env={**os.environ, "TG_PING_RAW": "1", "TELEGRAM_BOT_TOKEN": bot.bot_token()},  # the hook env lacks it
+                   capture_output=True, timeout=30)
 
 
 def main():
