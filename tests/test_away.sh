@@ -1,8 +1,10 @@
 #!/bin/bash
 # Table test for tg-away.py + tg-ping.sh (dry run, nothing is sent). Run: bash tests/test_away.sh
 H="$(dirname "$0")/../plugins/telegram-hook/scripts/tg-away.py"
-T=$(mktemp -d); export TELEGRAM_BOT_TOKEN=fake-token TELEGRAM_CHAT_ID=1 TMPDIR=$T TG_API_BASE=http://127.0.0.1:9 TG_AWAY_FAKE_PLATFORM=darwin TG_AWAY_DELAY=2 TG_PING_DRYRUN_FILE=$T/sent CLAUDE_PROJECT_DIR=/x/myproj CLAUDE_CODE_ENTRYPOINT=cli
-unset CLAUDE_CODE_HOST_SESSION_ID CLAUDE_CODE_REMOTE CONDUCTOR_WORKSPACE_NAME CLAUDE_PLUGIN_OPTION_AWAY_DELAY
+T=$(mktemp -d); export TELEGRAM_CHAT_ID=1 TMPDIR=$T TG_API_BASE=http://127.0.0.1:9 TG_AWAY_FAKE_PLATFORM=darwin TG_AWAY_DELAY=2 TG_PING_DRYRUN_FILE=$T/sent CLAUDE_PROJECT_DIR=/x/myproj CLAUDE_CODE_ENTRYPOINT=cli
+unset TELEGRAM_BOT_TOKEN CLAUDE_PLUGIN_OPTION_BOT_TOKEN CLAUDE_CODE_HOST_SESSION_ID CLAUDE_CODE_REMOTE CONDUCTOR_WORKSPACE_NAME CLAUDE_PLUGIN_OPTION_AWAY_DELAY
+# the token only as the MCP server saves it: hooks never get the secret option in their env
+mkdir -p -m 700 "$T/claude-telegram-hook"; (umask 077; printf fake-token >"$T/claude-telegram-hook/bot_token")
 pass=0; fail=0
 tr_text() { jq -nc --arg t "$1" '{type:"assistant",message:{content:[{type:"text",text:$t}]}}' >"$T/$2.jsonl"; }
 tr_ask()  { jq -nc --arg q "$1" '{type:"assistant",message:{content:[{type:"tool_use",name:"AskUserQuestion",input:{questions:[{question:$q,options:[{label:"Short",description:"5 min"},{label:"Long"}]}]}}]}}' >"$T/$2.jsonl"; }

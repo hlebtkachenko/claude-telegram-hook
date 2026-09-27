@@ -617,6 +617,19 @@ got = subprocess.run([sys.executable, "-c", "import importlib, sys; sys.path.ins
                       "print(importlib.import_module('tg-bot').bot_token())", HOOKS],
                      env={**ENV, "TELEGRAM_BOT_TOKEN": ""}, capture_output=True, text=True).stdout.strip()
 check("hook reads saved token when the option is not passed", got == "fake-token", got)
+read_tok = ("import importlib, sys; sys.path.insert(0, sys.argv[1]); "
+            "print(repr(importlib.import_module('tg-bot').bot_token()))")
+open(tok_path, "wb").write(b"\xff\xfe")
+got = subprocess.run([sys.executable, "-c", read_tok, HOOKS], env={**ENV, "TELEGRAM_BOT_TOKEN": ""},
+                     capture_output=True, text=True)
+check("non-text token file: empty, no crash", got.stdout.strip() == "''" and got.returncode == 0, got)
+os.remove(tok_path)
+os.symlink(os.path.join(T, "elsewhere"), tok_path)
+open(os.path.join(T, "elsewhere"), "w").write("planted")
+got = subprocess.run([sys.executable, "-c", read_tok, HOOKS], env={**ENV, "TELEGRAM_BOT_TOKEN": ""},
+                     capture_output=True, text=True).stdout.strip()
+check("symlinked token file ignored", got == "''", got)
+os.remove(tok_path)
 
 # cleanup: stop any poller left
 try:

@@ -19,6 +19,7 @@ import signal
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 import uuid
@@ -522,26 +523,31 @@ def selected(question, qi, evts):
 # ---------- Telegram ----------
 
 def bot_token():
-    """Option or env var, else the copy the plugin's MCP server saved: Claude Code passes the secret bot_token
-    option to MCP servers but not to hooks."""
-    tok = opt("BOT_TOKEN", "TELEGRAM_BOT_TOKEN")
+    """Plugin option, else the copy the plugin's MCP server saved (Claude Code passes the secret bot_token option
+    to MCP servers but not to hooks), else TELEGRAM_BOT_TOKEN for manual use. Hooks and notify so always use the
+    bot configured in /plugin. Never call log() here or in state(): log() calls this."""
+    tok = (os.environ.get("CLAUDE_PLUGIN_OPTION_BOT_TOKEN") or "").strip()
     if tok:
         return tok
     try:
         with os.fdopen(os.open(state("bot_token"), os.O_RDONLY | os.O_NOFOLLOW)) as f:
-            return f.read().strip()
-    except OSError:
-        return ""
+            tok = f.read().strip()
+    except (OSError, ValueError):  # missing, a symlink, or not text
+        tok = ""
+    return tok or (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
 
 
 def save_token(tok):
     """Keep the token for hooks: 0600 file in the per-user state dir, replaced atomically, links never followed."""
     path = state("bot_token")
-    tmp = f"{path}.{os.getpid()}.tmp"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(tok)
-    os.replace(tmp, path)
+    fd, tmp = tempfile.mkstemp(dir=STATE, prefix="bot_token.")  # 0600, unique name
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(tok)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 def multipart(params, files):
