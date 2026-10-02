@@ -48,7 +48,7 @@ def handle(req):
     if method == "initialize":
         version = params.get("protocolVersion")
         return {"protocolVersion": version if isinstance(version, str) and version else "2025-06-18", "capabilities": {"tools": {}},
-                "serverInfo": {"name": "telegram-hook", "version": "0.2.1"}}
+                "serverInfo": {"name": "telegram-hook", "version": "1.0.0"}}
     if method == "ping":
         return {}
     if method == "tools/list":

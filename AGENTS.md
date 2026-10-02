@@ -24,4 +24,5 @@ After changing a manifest, also run `claude plugin validate .` and `claude plugi
 - The MCP server (`tg-mcp.py`) gets options only through `${user_config.*}` in `plugin.json` `mcpServers.env`; a new option it needs goes there too.
 - Configuration comes from `CLAUDE_PLUGIN_OPTION_<KEY>` first, then the plain env var (`opt()` in `tg-bot.py`). A new option goes in `plugin.json` `userConfig`, in `opt()`, and in the README table.
 - Bump `version` in `plugin.json` for every release: installed copies update only when it changes.
+- Regenerate screenshots with docs/demo/mock.html (`bash docs/demo/render.sh`), never with the real bot. They are mock renderings captioned as such; message text and buttons come from the plugin's builders run offline.
 - Conventional Commits, one logical unit per commit.

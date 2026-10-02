@@ -1,0 +1,65 @@
+name: Bug report
+description: Something doesn't work as described
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste a bot token.** Remove chat IDs and prompt text from anything you paste below. Security problems go to a [private report](https://github.com/hlebtkachenko/claude-telegram-hook/security/advisories/new), not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: prompt
+    attributes:
+      label: Prompt type
+      options:
+        - Question (AskUserQuestion)
+        - Plan approval (ExitPlanMode)
+        - Permission prompt
+        - Turn that ended with a question
+        - Reply to an earlier ping
+        - API error (StopFailure)
+        - notify tool
+        - Pairing (chat ID)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and desktop
+      description: macOS version, or Linux distribution and desktop with X11 or Wayland.
+      placeholder: "macOS 26.1 / Ubuntu 24.04 GNOME on Wayland"
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "`python3 --version`, `claude --version`, and the plugin version from `/plugin`."
+      placeholder: "Python 3.9.6, Claude Code 2.1.284, telegram-hook 1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where the session ran
+      options:
+        - Terminal
+        - Claude desktop app
+        - Conductor
+        - IDE
+        - Other
+  - type: textarea
+    id: log
+    attributes:
+      label: hooks.log lines
+      description: |
+        From `${TMPDIR:-${XDG_RUNTIME_DIR:-$HOME/.cache}}/claude-telegram-hook/hooks.log`.
+        Warning: remove chat IDs and prompt text before pasting, and never paste a token.
+      render: text
