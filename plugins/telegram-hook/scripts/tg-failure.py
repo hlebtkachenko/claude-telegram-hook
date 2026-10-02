@@ -44,7 +44,8 @@ def main():
         idle = bot.idle_seconds()
         if idle is None or idle < bot.DELAY:
             return bot.log(who, f"skip: idle={idle} (no idle reader, or user at the computer)")
-        if not fresh(f"session-{re.sub(r'[^\w-]', '', data.get('session_id', '')) or 'unknown'}"):
+        session = re.sub(r"[^\w-]", "", data.get("session_id", "")) or "unknown"
+        if not fresh(f"session-{session}"):
             return bot.log(who, "skip: pinged this session in the last hour")
     detail = " ".join((data.get("error_details") or data.get("last_assistant_message") or "").split())
     cwd = data.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
