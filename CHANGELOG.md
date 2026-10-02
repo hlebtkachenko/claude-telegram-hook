@@ -7,7 +7,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 First public release.
 
 ### Fixed
-- `tg-failure.py` (StopFailure hook) failed to parse on Python 3.9 to 3.11 (a backslash inside an f-string expression), so API error pings never went out there. Released as 0.2.2 on the way to 1.0.0.
+- `tg-failure.py` (StopFailure hook) failed to parse on Python 3.9 to 3.11 (a backslash inside an f-string expression), so API error pings never went out there. First fixed in 0.2.2 (#3).
 - `tg-away.py` passes the token saved by the MCP server to `tg-ping.sh`; a token set in `/plugin` wins over the saved copy; the token file is read robustly; pairing waits for the token.
 
 ### Added
