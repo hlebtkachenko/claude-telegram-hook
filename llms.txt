@@ -1,0 +1,26 @@
+# telegram-hook for Claude Code
+
+> telegram-hook is an open-source Claude Code plugin (hooks plus a one-tool MCP server, standard-library Python) that lets you answer Claude Code from your phone. When you step away from your Mac or Linux desktop, Claude Code's questions, plan approvals and permission prompts arrive in your private Telegram chat with answer buttons; your tap or reply (text, photo or file) goes straight back into the running session. Silent while you are at the computer. MIT.
+
+Key facts:
+- Install (Claude Code v2.1.275+): `/plugin install telegram-hook --marketplace hlebtkachenko/claude-telegram-hook`. Older versions: `/plugin marketplace add hlebtkachenko/claude-telegram-hook`, then `/plugin install telegram-hook@claude-telegram-hook`.
+- Options: `bot_token` (from @BotFather, stored as a secret), `chat_id` (empty = pairing: the bot replies to a private message with your chat ID), `away_delay` (default 600 s, 1 to 600), `reply_window` (default 600 s, 1 to 600), `user_name` (default "The user").
+- Presence detection: keyboard and mouse idle time via `ioreg` on macOS, `xprintidle` or GNOME Mutter's idle monitor on Linux. No idle reader (headless, SSH, other Wayland desktops, Windows): the hooks do nothing.
+- Answers: option buttons (multi-select toggles), Allow, Always allow (only Claude Code's own suggested local or session allow rules), Deny, Answer in app, or a text, photo or file reply. A reply to a turn that ended with a question wakes Claude with the text.
+- Hooks: SessionStart (tg-pair.py), PreToolUse for AskUserQuestion and ExitPlanMode and PermissionRequest (tg-ask.py), Notification (tg-away.py), Stop with asyncRewake (tg-stop.py), StopFailure (tg-failure.py); MCP server `telegram` with one tool, `notify`.
+- Network: api.telegram.org only, by long polling (getUpdates); no inbound port, no relay server, no telemetry.
+- Security: only the configured chat can answer; Telegram input is never executed (it only becomes an answer, a decision or a note to Claude); the token stays out of argv, logs and notes; state lives in a private per-user directory (0700). It never auto-approves.
+- Requirements: macOS or a Linux desktop, python3 3.9+, curl, a Telegram bot nothing else polls.
+- Not affiliated with or endorsed by Anthropic or Telegram.
+
+## Docs
+- [README](https://github.com/hlebtkachenko/claude-telegram-hook/blob/main/README.md): what it does, quick start, options, security, comparison, FAQ
+- [ARCHITECTURE.md](https://github.com/hlebtkachenko/claude-telegram-hook/blob/main/ARCHITECTURE.md): hooks, poller, state files, security model
+- [AGENTS.md](https://github.com/hlebtkachenko/claude-telegram-hook/blob/main/AGENTS.md): gate and rules for coding agents
+- [CHANGELOG.md](https://github.com/hlebtkachenko/claude-telegram-hook/blob/main/CHANGELOG.md): release notes
+- [SECURITY.md](https://github.com/hlebtkachenko/claude-telegram-hook/blob/main/SECURITY.md): how to report a vulnerability
+
+## Source
+- [plugins/telegram-hook/scripts](https://github.com/hlebtkachenko/claude-telegram-hook/tree/main/plugins/telegram-hook/scripts): hooks, poller and MCP server
+- [plugins/telegram-hook/hooks/hooks.json](https://github.com/hlebtkachenko/claude-telegram-hook/blob/main/plugins/telegram-hook/hooks/hooks.json): hook wiring
+- [tests](https://github.com/hlebtkachenko/claude-telegram-hook/tree/main/tests): suites against a fake Telegram server
