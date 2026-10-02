@@ -1,7 +1,7 @@
 {
   "name": "telegram-hook",
   "displayName": "Telegram Hook",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "macOS and Linux desktops. When you step away from your computer, Claude Code's questions, plan approvals and permission prompts come to Telegram with answer buttons; your reply (text, photo or file) goes back into the session.",
   "author": { "name": "Hleb Tkachenko", "url": "https://github.com/hlebtkachenko" },
   "homepage": "https://github.com/hlebtkachenko/claude-telegram-hook",
