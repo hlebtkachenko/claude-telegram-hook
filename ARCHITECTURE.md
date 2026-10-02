@@ -7,6 +7,7 @@ claude-telegram-hook/
 ├── .claude-plugin/marketplace.json     # Marketplace manifest: this repo is a one-plugin marketplace
 ├── plugins/telegram-hook/
 │   ├── .claude-plugin/plugin.json      # Plugin manifest and userConfig (token, chat ID, timers, name)
+│   ├── README.md                       # Short plugin README for plugin directories (absolute image URLs)
 │   ├── hooks/hooks.json                # Hook wiring: events, matchers, timeouts
 │   └── scripts/
 │       ├── tg-bot.py                   # Shared helpers and the reply poller (`tg-bot.py poll`)
@@ -20,8 +21,18 @@ claude-telegram-hook/
 ├── tests/
 │   ├── test_hooks.py                   # tg-bot / tg-ask / tg-stop / tg-failure / tg-pair / tg-mcp against a fake Telegram server
 │   └── test_away.sh                    # tg-away table test (dry run)
-├── .github/workflows/test.yml          # CI: both test suites
+├── docs/
+│   ├── demo/                           # Mock screenshots: mock.html, social-card.html, messages.py (plugin builders, offline), render.sh
+│   └── images/                         # Rendered PNGs used by the READMEs, and the social preview
+├── .github/
+│   ├── workflows/test.yml              # CI: both test suites on Python 3.9 and the latest 3.x
+│   ├── dependabot.yml                  # Weekly GitHub Actions updates
+│   ├── ISSUE_TEMPLATE/                 # Bug report, feature request, security link
+│   └── pull_request_template.md
 ├── AGENTS.md                           # Instructions for coding agents
+├── CHANGELOG.md                        # Release notes (Keep a Changelog)
+├── CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md
+├── llms.txt                            # Short machine-readable summary for AI agents and search tools
 └── README.md                           # User guide
 ```
 
@@ -102,7 +113,7 @@ Repository URL: https://github.com/hlebtkachenko/claude-telegram-hook
 
 Primary Contact: Hleb Tkachenko
 
-Date of Last Update: 2026-09-27
+Date of Last Update: 2026-10-02
 
 ## 11. Glossary
 

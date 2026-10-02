@@ -1,12 +1,14 @@
 {
   "name": "claude-telegram-hook",
-  "description": "Answer Claude Code prompts from Telegram while you are away from your computer",
+  "description": "Answer Claude Code's questions, plan approvals and permission prompts from Telegram when you step away",
   "owner": { "name": "Hleb Tkachenko", "url": "https://github.com/hlebtkachenko" },
   "plugins": [
     {
       "name": "telegram-hook",
       "source": "./plugins/telegram-hook",
-      "description": "Questions, plan approvals and permission prompts on Telegram with answer buttons (macOS, Linux desktops)"
+      "description": "Answer Claude Code's questions, plan approvals and permission prompts from Telegram when you step away: tap an option, Allow, Always allow or Deny, or reply with text, a photo or a file. macOS and Linux desktops.",
+      "category": "productivity",
+      "tags": ["telegram", "notifications", "permissions", "human-in-the-loop", "mobile", "approvals"]
     }
   ]
 }
