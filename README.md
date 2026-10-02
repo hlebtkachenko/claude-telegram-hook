@@ -76,7 +76,7 @@ To update later: `/plugin marketplace update claude-telegram-hook`, then restart
 ```mermaid
 sequenceDiagram
     participant S as Claude Code session
-    participant H as Hook (tg-ask / tg-away / tg-stop)
+    participant H as Hook (tg-ask / tg-stop)
     participant P as Poller (tg-bot.py poll)
     participant T as Telegram Bot API
     participant U as Your phone
@@ -87,7 +87,7 @@ sequenceDiagram
     U->>T: button tap or reply
     P->>T: getUpdates (long polling)
     T-->>P: update from your chat only
-    P->>H: answers/<message_id>.json
+    P->>H: answer file (answers/ID.json)
     H-->>S: decision JSON (stdout), or exit 2 with a note on stderr
 ```
 
@@ -157,7 +157,7 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 ## How it compares (as of 2026-10)
 
 - **[Remote Control](https://code.claude.com/docs/en/remote-control) mobile push:** needs a Pro, Max, Team or Enterprise login (API keys are not supported), and you answer in the Claude app. telegram-hook does not depend on which login Claude Code uses, and you answer in Telegram.
-- **The official Telegram channel plugin (`telegram@claude-plugins-official`, [channels](https://code.claude.com/docs/en/channels)):** a research preview that needs [Bun](https://bun.sh) and starting Claude Code with `--channels`; it is a two-way chat bridge and can relay permission prompts. telegram-hook needs no Bun and no flag, sends only when you are away, and adds option buttons for questions, plan approval, photo and file replies, and Always allow. The two cannot share one bot: Telegram allows one `getUpdates` reader per token.
+- **The official Telegram channel plugin (`telegram@claude-plugins-official`, [channels](https://code.claude.com/docs/en/channels)):** a research preview that needs [Bun](https://bun.sh) and starting Claude Code with `--channels`; it is a two-way chat bridge and can relay permission prompts. telegram-hook needs no Bun and no flag, sends only when you are away, and answers the prompts Claude Code is showing: option buttons for questions, plan approval, and permission prompts with Always allow; photo and file replies reach Claude too. The two cannot share one bot: Telegram allows one `getUpdates` reader per token.
 - **Sound and banner notifiers:** they tell you that Claude is waiting; you still walk back to answer.
 - **`--dangerously-skip-permissions`:** no prompts at all, so no human in the loop.
 
