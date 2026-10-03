@@ -311,19 +311,52 @@ def run_ms(cmd):
     return int(nums[-1]) // 1000 if nums else None  # last number: gdbus prints "(uint64 1234,)"
 
 
+def print_session():
+    """True when the Claude Code process running this hook was started with -p/--print (a script, CI, SDK one-shot).
+
+    Nobody waits at a desktop there, and holding Stop would keep the script running for minutes.
+    Walks up to the nearest ancestor whose program is `claude`; ps is on macOS and Linux."""
+    faked = fake("TG_AWAY_FAKE_PRINT")  # tests: "1" or "0"
+    if faked:
+        return faked == "1"
+    def ps(field, pid):
+        try:
+            return subprocess.run(["ps", "-o", field + "=", "-p", str(pid)],
+                                  capture_output=True, text=True, timeout=5).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    pid = os.getppid()
+    for _ in range(6):
+        out = ps("ppid", pid) + " " + ps("comm", pid)  # comm: the program path, which may contain spaces
+        ppid, _, comm = out.strip().partition(" ")
+        if os.path.basename(comm) == "claude":
+            args = ps("args", pid).split()
+            return "-p" in args or "--print" in args  # ponytail: token match; a prompt containing " -p " also counts
+        if not ppid.isdigit() or int(ppid) <= 1:
+            return False
+        pid = int(ppid)
+    return False
+
+
 def idle_seconds():
-    """Keyboard/mouse idle seconds on this desktop: macOS ioreg, Linux xprintidle or GNOME Mutter. None: no reader."""
+    """Keyboard/mouse idle seconds on this desktop: macOS ioreg, Linux xprintidle or GNOME Mutter.
+    None: no reader, or a -p/--print session (nobody at a desktop to be away from)."""
     plat = platform()
     if plat != "darwin" and not plat.startswith("linux"):
         return None  # Windows and others: no idle reader
     faked = fake("TG_AWAY_FAKE_IDLE")  # tests: a number, or a file holding one
     if faked:
+        if fake("TG_AWAY_FAKE_PRINT") == "1":
+            return None
         if faked.startswith("/"):
             try:
                 return int(open(faked).read().strip())
             except (OSError, ValueError):
                 return None
         return int(faked)
+    if print_session():
+        return None
     if plat != "darwin":  # a headless server has neither reader (or no display to read): None
         idle = run_ms(["xprintidle"])
         return idle if idle is not None else run_ms(

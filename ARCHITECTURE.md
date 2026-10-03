@@ -59,7 +59,7 @@ Claude Code session ──hook event (stdin JSON)──> tg-ask.py / tg-away.py 
 - **tg-pair.py** (`SessionStart`). With a token but no `chat_id`: starts one pairing poller (`pair.lock`, 10 minutes) that answers a private message with the sender's own chat ID, and returns `systemMessage` plus `additionalContext` telling the user to message the bot.
 - **tg-mcp.py** (MCP server `telegram`). Newline-delimited JSON-RPC over stdio; one tool, `notify`, sends Markdown to the configured chat. Options arrive through `${user_config.*}` in `plugin.json`.
 
-Presence: `idle_seconds()` in tg-bot.py reads `ioreg` on macOS, `xprintidle` or GNOME Mutter's IdleMonitor (`gdbus`) on Linux, and returns None elsewhere, so the hooks skip.
+Presence: `idle_seconds()` in tg-bot.py reads `ioreg` on macOS, `xprintidle` or GNOME Mutter's IdleMonitor (`gdbus`) on Linux, and returns None elsewhere, so the hooks skip. It also returns None when `print_session()` finds that the nearest `claude` ancestor process was started with `-p`/`--print`: nobody is at a desktop there, and a held Stop hook would stall the script.
 
 ### 3.2. Poller
 

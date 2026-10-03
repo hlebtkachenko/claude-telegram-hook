@@ -1,7 +1,7 @@
 {
   "name": "telegram-hook",
   "displayName": "Telegram Hook",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Answer Claude Code's questions, plan approvals and permission prompts from Telegram when you step away: tap an option, Allow, Always allow or Deny, or reply with text, a photo or a file. macOS and Linux desktops.",
   "author": { "name": "Hleb Tkachenko", "url": "https://github.com/hlebtkachenko" },
   "homepage": "https://github.com/hlebtkachenko/claude-telegram-hook",

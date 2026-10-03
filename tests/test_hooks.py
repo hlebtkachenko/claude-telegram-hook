@@ -279,6 +279,18 @@ check("linux: xprintidle ms", linux_idle({"xprintidle": "5300", "gdbus": "(uint6
 check("linux: gdbus Mutter ms", linux_idle({"gdbus": "(uint64 7000,)"}) == "7", "")
 check("linux: no reader = None", linux_idle({}) == "None", "")
 
+# claude -p / --print: nobody at the desktop, so every hook stays silent (idle reader = None)
+n0 = len(calls)
+p = start("tg-stop.py", {"hook_event_name": "Stop", "session_id": "sprint", "last_assistant_message": "Ship it?"},
+          {**ENV, "TG_AWAY_FAKE_PRINT": "1"})
+code, out, _ = finish(p, 5)
+check("print session: tg-stop exits at once, no ping", code == 0 and not sent_since(n0), code)
+check("print session: no ancestor claude = interactive", subprocess.run(
+    [sys.executable, "-c", "import importlib, sys; sys.path.insert(0, sys.argv[1]); "
+     "print(importlib.import_module('tg-bot').print_session())", HOOKS],
+    env={k: v for k, v in ENV.items() if k != "TG_AWAY_FAKE_PRINT"}, capture_output=True, text=True).stdout.strip()
+      == "False", "")
+
 # permission: text reply -> deny with message; Allow button -> allow
 n = len(calls)
 perm = {"hook_event_name": "PermissionRequest", "tool_name": "Bash", "session_id": "sp",

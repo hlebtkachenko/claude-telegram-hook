@@ -2,6 +2,11 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org).
 
+## [1.1.1] - 2026-10-04
+
+### Fixed
+- Sessions started with `claude -p` / `--print` (scripts, CI, SDK one-shots) no longer wait: every hook stays silent there, as on a headless machine. Before, the Stop hook held the run for up to 22 minutes waiting for an away-reply.
+
 ## [1.1.0] - 2026-10-04
 
 ### Added

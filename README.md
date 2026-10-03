@@ -111,7 +111,7 @@ All images below are illustrations: mock renderings of the plugin's messages wit
 
 ## Requirements
 
-- macOS, or a Linux desktop session. Presence detection reads keyboard and mouse idle time: `ioreg` on macOS; on Linux `xprintidle` (X11), else GNOME's Mutter idle monitor over `gdbus` (GNOME on Wayland). Without an idle reader (headless servers, SSH sessions without a desktop, other Wayland desktops, Windows) the hooks do nothing.
+- macOS, or a Linux desktop session. Presence detection reads keyboard and mouse idle time: `ioreg` on macOS; on Linux `xprintidle` (X11), else GNOME's Mutter idle monitor over `gdbus` (GNOME on Wayland). Without an idle reader (headless servers, SSH sessions without a desktop, other Wayland desktops, Windows) the hooks do nothing, and the same holds for sessions started with `claude -p` / `--print`.
 - `python3` (3.9 or later; the one from Xcode Command Line Tools works) and `curl`. No other dependencies.
 - A recent Claude Code with plugin `userConfig` support.
 - A Telegram bot that nothing else polls. Telegram allows one `getUpdates` reader per bot token, so do not reuse the bot of the official Telegram channel plugin or any other bot program.
