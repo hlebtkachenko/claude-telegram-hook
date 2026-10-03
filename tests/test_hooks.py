@@ -81,7 +81,8 @@ ENV = {**os.environ, "TMPDIR": T, "TG_API_BASE": f"http://127.0.0.1:{server.serv
        "CLAUDE_PROJECT_DIR": "/x/myproj", "CLAUDE_CODE_ENTRYPOINT": "cli"}
 for k in ("CLAUDE_CODE_HOST_SESSION_ID", "CLAUDE_CODE_REMOTE", "CONDUCTOR_WORKSPACE_NAME",
           "CLAUDE_PLUGIN_OPTION_BOT_TOKEN", "CLAUDE_PLUGIN_OPTION_CHAT_ID", "CLAUDE_PLUGIN_OPTION_USER_NAME",
-          "CLAUDE_PLUGIN_OPTION_AWAY_DELAY", "CLAUDE_PLUGIN_OPTION_REPLY_WINDOW"):
+          "CLAUDE_PLUGIN_OPTION_AWAY_DELAY", "CLAUDE_PLUGIN_OPTION_REPLY_WINDOW",
+          "CLAUDE_PLUGIN_OPTION_SKIP_QUESTION_HEADERS", "TG_SKIP_QUESTION_HEADERS"):
     ENV.pop(k, None)
 passed, failed = 0, 0
 
@@ -327,6 +328,22 @@ check("always allow button", [r[0]["text"] for r in msg[1]["reply_markup"]["inli
 p = start("tg-ask.py", {**perm, "tool_name": "AskUserQuestion"})
 code, out, _ = finish(p, 5)
 check("PermissionRequest ignores AskUserQuestion", code == 0 and out == "", out)
+
+# skip_question_headers: a question whose headers are all listed never pings; others still do
+n0 = len(calls)
+p = start("tg-ask.py", {"hook_event_name": "PreToolUse", "tool_name": "AskUserQuestion", "session_id": "sskip",
+                        "tool_input": {"questions": [{**Q1, "header": "next"}]}},
+          {"TG_SKIP_QUESTION_HEADERS": "Next, Later"})
+code, out, _ = finish(p, 5)
+check("skipped header: silent", code == 0 and out == "" and not sent_since(n0), (code, out))
+n = len(calls)
+p = start("tg-ask.py", {"hook_event_name": "PreToolUse", "tool_name": "AskUserQuestion", "session_id": "sskip2",
+                        "tool_input": {"questions": [{**Q1, "header": "Next"}, {**Q1, "header": "Plan"}]}},
+          {"TG_SKIP_QUESTION_HEADERS": "Next"})
+mid, msg = ping_id(n)
+check("mixed headers still ping", bool(mid), msg)
+p.kill()
+finish(p, 5)
 
 # photo reply: downloaded (0600, largest size), path in the denial; photo-only reply answers a question
 n = len(calls)

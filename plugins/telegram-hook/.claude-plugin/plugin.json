@@ -1,7 +1,7 @@
 {
   "name": "telegram-hook",
   "displayName": "Telegram Hook",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Answer Claude Code's questions, plan approvals and permission prompts from Telegram when you step away: tap an option, Allow, Always allow or Deny, or reply with text, a photo or a file. macOS and Linux desktops.",
   "author": { "name": "Hleb Tkachenko", "url": "https://github.com/hlebtkachenko" },
   "homepage": "https://github.com/hlebtkachenko/claude-telegram-hook",
@@ -54,6 +54,12 @@
       "title": "Your name",
       "description": "How Claude is told who answered, as in \"<name> replied in Telegram\".",
       "default": "The user"
+    },
+    "skip_question_headers": {
+      "type": "string",
+      "title": "Questions to keep off Telegram",
+      "description": "Comma-separated AskUserQuestion headers (for example: Next). A question whose headers are all in this list is never sent to Telegram.",
+      "default": ""
     }
   }
 }

@@ -88,6 +88,8 @@ def main():
     found = bot.read_transcript(transcript)
     if kind not in KINDS or (kind == "permission_prompt" and bot.claimed(session, time.time())):
         return
+    if bot.skipped_questions(found["questions"]):
+        return
     started = bot.mtime(transcript) or time.time()
     text = build_message(data, found)
     bot.state()

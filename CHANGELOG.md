@@ -2,6 +2,11 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org).
 
+## [1.1.0] - 2026-10-04
+
+### Added
+- `skip_question_headers` option: AskUserQuestion questions whose headers are all listed stay in the app and never go to Telegram (`tg-ask.py` and `tg-away.py`).
+
 ## [1.0.0] - 2026-10-02
 
 First public release.
@@ -55,6 +60,7 @@ First public release.
 ### Added
 - First version of the telegram-hook plugin: questions, plan approvals and permission prompts relayed to Telegram with answer buttons while you are away from your Mac (`tg-ask.py`, `tg-away.py`, `tg-stop.py`, the `tg-bot.py` poller and `tg-ping.sh`).
 
+[1.1.0]: https://github.com/hlebtkachenko/claude-telegram-hook/releases/tag/v1.1.0
 [1.0.0]: https://github.com/hlebtkachenko/claude-telegram-hook/releases/tag/v1.0.0
 [0.2.1]: https://github.com/hlebtkachenko/claude-telegram-hook/compare/e8adf63...a86c914
 [0.2.0]: https://github.com/hlebtkachenko/claude-telegram-hook/compare/43858d5...e8adf63

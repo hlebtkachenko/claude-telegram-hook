@@ -48,6 +48,15 @@ REPLY_WINDOW = seconds("REPLY_WINDOW", "TG_REPLY_WINDOW", "600")
 LINGER = int(os.environ.get("TG_POLL_LINGER", "60")) if os.environ.get("TG_POLL_LINGER", "").isdigit() else 60
 MIN_IDLE = 30  # below this at hook start the user is at the Mac: normal dialog, no ping
 USER = opt("USER_NAME", "TG_USER_NAME", "The user")  # names the replier in notes Claude reads
+SKIP_HEADERS = {h.strip().casefold() for h in opt("SKIP_QUESTION_HEADERS", "TG_SKIP_QUESTION_HEADERS").split(",")
+                if h.strip()}
+
+
+def skipped_questions(questions):
+    """True when every question's header is in skip_question_headers: such a question never goes to Telegram."""
+    qs = [q for q in questions or [] if isinstance(q, dict)]
+    return bool(qs) and bool(SKIP_HEADERS) and all(
+        str(q.get("header", "")).strip().casefold() in SKIP_HEADERS for q in qs)
 STATE = os.path.join(os.environ.get("TMPDIR") or os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache"),
                      "claude-telegram-hook")  # per-user dirs only, never a shared /tmp
 

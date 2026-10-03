@@ -137,6 +137,9 @@ def main():
     if event == "PermissionRequest" and tool in ("AskUserQuestion", "ExitPlanMode"):
         return  # PreToolUse owns these
     who = f"tg-ask {data.get('session_id', '')[:8]} {tool}"
+    if tool == "AskUserQuestion" and bot.skipped_questions((data.get("tool_input") or {}).get("questions")):
+        bot.log(who, "skip: header in skip_question_headers")
+        return
     kind = {"AskUserQuestion": "question", "ExitPlanMode": "plan"}.get(tool, "permission")
     if not bot.bot_token() or not bot.CHAT:
         bot.log(who, "skip: bot token or chat ID not configured")

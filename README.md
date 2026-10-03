@@ -125,8 +125,9 @@ All images below are illustrations: mock renderings of the plugin's messages wit
 | `away_delay` | 600 | Seconds of keyboard and mouse idle time before a prompt goes to Telegram (1 to 600). |
 | `reply_window` | 600 | Seconds a Telegram ping waits for your answer (1 to 600). |
 | `user_name` | `The user` | Name Claude sees in "`<name>` replied in Telegram". |
+| `skip_question_headers` | empty | Comma-separated AskUserQuestion headers (case-insensitive). A question whose headers are all listed stays in the app and is never sent to Telegram, for example routine questions another plugin asks. |
 
-Change them in `/plugin` (telegram-hook, Configure options). The non-secret options also appear in `/config`. Outside the plugin (for example when calling `tg-ping.sh` from your own scripts), the same values can come from `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TG_AWAY_DELAY`, `TG_REPLY_WINDOW` and `TG_USER_NAME`.
+Change them in `/plugin` (telegram-hook, Configure options). The non-secret options also appear in `/config`. Outside the plugin (for example when calling `tg-ping.sh` from your own scripts), the same values can come from `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TG_AWAY_DELAY`, `TG_REPLY_WINDOW`, `TG_USER_NAME` and `TG_SKIP_QUESTION_HEADERS`.
 
 ## How it answers
 
